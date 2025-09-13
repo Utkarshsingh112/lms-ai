@@ -1,6 +1,6 @@
 import React from 'react'
 import Image from 'next/image'
-import { Link2Off } from 'lucide-react'
+// import { Link2Off } from 'lucide-react'
 import Link from 'next/link'
 import Navitems from './Navitems'
 
