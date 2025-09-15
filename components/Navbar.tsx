@@ -1,8 +1,8 @@
 import React from 'react'
 import Image from 'next/image'
-// import { Link2Off } from 'lucide-react'
 import Link from 'next/link'
 import Navitems from './Navitems'
+import { Button } from './ui/button'
 
 const Navbar = () => {
   return (
@@ -19,8 +19,7 @@ const Navbar = () => {
       </Link>
       <div className="flex items-center gap-8">
        <Navitems/>
-        <p>Sign in</p>
-
+        <Button>Sign in</Button>
       </div>
     </nav>
   )

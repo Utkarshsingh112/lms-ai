@@ -1,6 +1,9 @@
+/* stylelint-disable at-rule-no-unknown */
 @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
+
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -138,15 +141,15 @@ body {
   }
 }
 
-@layer components {
+@layer utilities {
   .home-section {
-    @apply flex gap-4 justify-between items-start w-full max-lg:flex-col-reverse max-lg:items-center;
+    @apply flex gap-0.5 justify-between items-start w-full max-lg:flex-col-reverse max-lg:items-center;
   }
   .companions-grid {
-    @apply flex flex-wrap gap-4 w-full max-md:justify-center;
+    @apply flex flex-wrap gap-6 w-full max-md:justify-center max-md:gap-4;
   }
   .companion-card {
-    @apply flex flex-col rounded-4xl border border-black px-4 py-4 gap-5 w-full min-lg:max-w-[410px] justify-between;
+    @apply flex flex-col rounded-4xl border border-black px-6 py-6 gap-4 w-full min-lg:max-w-[410px] justify-between hover:shadow-lg transition-shadow duration-200;
   }
   .subject-badge {
     @apply bg-black text-white rounded-4xl text-sm px-2 py-1 capitalize;
@@ -179,7 +182,7 @@ body {
     @apply rounded-4xl border border-black px-7 pt-7 pb-10 max-lg:w-full bg-white;
   }
   .companion-limit {
-    @apply items-center justify-center flex flex-col gap-4 w-full min-2xl:w-1/2 pt-20 text-center;
+    @apply items-center justify-center flex flex-col gap-2 w-full min-2xl:w-1/2 pt-20 text-center;
   }
 
   .companion-section {
