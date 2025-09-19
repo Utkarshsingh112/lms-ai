@@ -34,18 +34,21 @@ const popularCompanions = [
 
 const Page = () => {
   return (
-    <div>
-      <h1>Popular Companions</h1>
-      <section className="companions-grid">
-        {popularCompanions.map((companion) => (
-          <CompanionCard key={companion.id} {...companion} />
-        ))}
+    <div className="space-y-12">
+      <section className="text-center">
+        <h1 className="mb-8">Popular Companions</h1>
+        <div className="companions-grid">
+          {popularCompanions.map((companion) => (
+            <CompanionCard key={companion.id} {...companion} />
+          ))}
+        </div>
       </section>
+      
       <section className="home-section">
         <CompanionsList 
-        title="recently added companions"
-        companions={recentSessions}
-        className="w-2/3 max-lg:w-full"
+          title="recently added companions"
+          companions={recentSessions}
+          className="flex-1 max-w-4xl"
         />
         <CTA />
       </section>
