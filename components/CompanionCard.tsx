@@ -4,7 +4,7 @@ import Image from "next/image";
 import React from "react";
 import Link from "next/link";
 interface CompanionCardProps {
-  id?: string;
+  id: string;
   name?: string;
   topic?: string;
   subject?: string;
@@ -39,7 +39,7 @@ const CompanionCard = ({
         <Image src="/icons/clock.svg" alt="clock" width={12.5} height={15} />
         <p className="text-sm">{duration} minutes</p>
       </div>
-      <Link href={`/companion/${id}`} className="w-full">
+      <Link href={`/companions/${id}`} className="w-full">
         <button className="btn-primary w-full justify-center">
           Launch Session
         </button>

@@ -6,14 +6,13 @@ import SearchInput from "@/components/SearchInput";
 import SubjectFilter from "@/components/SubjectFilter";
 
 
-//witht the help of this we can print the data and object locally in the terminal
+//with the help of this we can print the data and object locally in the terminal
 const Companionslibrary = async ({ searchParams }: SearchParams) => {
   const filters = await searchParams;
   const subject = filters.subject ? filters.topic : "";
   const topic = filters.topic ? filters.topic : "";
 
   const companions = await getAllCompanions({ subject, topic });
-  console.log(companions);
   return(
      <main>
             <section className="flex justify-between gap-4 max-sm:flex-col">
