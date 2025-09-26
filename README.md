@@ -1,36 +1,234 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Converso - AI-Powered Learning Management System
 
-## Getting Started
+Converso is a modern, real-time AI teaching platform that revolutionizes personalized education through interactive AI companions. Built with Next.js 15 and powered by cutting-edge AI voice technology, it offers immersive learning experiences across multiple subjects.
 
-First, run the development server:
+## 🌟 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### Core Functionality
+- **AI Learning Companions**: Create and interact with personalized AI tutors for different subjects
+- **Real-time Voice Conversations**: Seamless voice interactions powered by Vapi AI
+- **Multi-subject Support**: Mathematics, Science, Language, History, Coding, and Economics
+- **Session Management**: Track learning progress and session history
+- **User Authentication**: Secure authentication with Clerk
+- **Subscription Management**: Premium features with subscription tiers
+
+### Learning Experience
+- **Personalized Tutoring**: AI companions adapt to individual learning styles
+- **Interactive Sessions**: Real-time voice-based learning sessions
+- **Progress Tracking**: Monitor learning journey and completed sessions
+- **Subject Filtering**: Easy discovery of companions by subject and topic
+- **Companion Library**: Browse and launch pre-built learning companions
+
+### User Management
+- **Profile Dashboard**: View learning statistics and progress
+- **Custom Companions**: Create personalized AI tutors with specific parameters
+- **Session History**: Access previous learning sessions
+- **Bookmarking**: Save favorite companions for quick access
+
+## 🛠 Tech Stack
+
+### Frontend
+- **Next.js 15** - React framework with App Router
+- **React 19** - Latest React with concurrent features
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Modern styling framework
+- **Radix UI** - Accessible UI components
+- **Lucide React** - Modern icon library
+- **Lottie React** - Smooth animations
+
+### Backend & Services
+- **Supabase** - Database and backend services
+- **Clerk** - Authentication and user management
+- **Vapi AI** - Voice AI integration
+- **Sentry** - Error monitoring and performance tracking
+
+### Development Tools
+- **ESLint** - Code linting
+- **PostCSS** - CSS processing
+- **Zod** - Schema validation
+- **React Hook Form** - Form management
+
+## 📋 Prerequisites
+
+Before running this project, make sure you have:
+
+- Node.js 18+ installed
+- npm, yarn, pnpm, or bun package manager
+- Supabase account and project
+- Clerk account for authentication
+- Vapi AI account for voice functionality
+- Sentry account for monitoring (optional)
+
+## ⚙️ Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```env
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Vapi AI
+NEXT_PUBLIC_WEB_TOKEN=your_vapi_web_token
+
+# Sentry (Optional)
+SENTRY_AUTH_TOKEN=your_sentry_auth_token
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/lms-ai.git
+   cd lms-ai
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   # or
+   bun install
+   ```
 
-## Learn More
+3. **Set up environment variables**
+   - Copy `.env.example` to `.env.local`
+   - Fill in all required environment variables
 
-To learn more about Next.js, take a look at the following resources:
+4. **Set up the database**
+   - Create a new Supabase project
+   - Set up the required tables (companions, session_history, etc.)
+   - Configure Row Level Security (RLS) policies
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **Run the development server**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   # or
+   bun dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+6. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
 
-## Deploy on Vercel
+## 📁 Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+lms-ai/
+├── app/                    # Next.js App Router pages
+│   ├── companions/         # Companion-related pages
+│   ├── my-journey/         # User profile and progress
+│   ├── subscription/       # Subscription management
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Homepage
+├── components/             # Reusable UI components
+│   ├── ui/                # Base UI components (Radix)
+│   ├── CompanionCard.tsx  # Companion display component
+│   ├── CompanionForm.tsx  # Companion creation form
+│   └── Navbar.tsx         # Navigation component
+├── lib/                   # Utility libraries
+│   ├── actions/           # Server actions
+│   ├── supabase.ts        # Supabase client
+│   ├── vapi.sdk.ts        # Vapi AI integration
+│   └── utils.ts           # Helper utilities
+├── constants/             # App constants
+├── public/                # Static assets
+└── middleware.ts          # Next.js middleware
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🎯 Key Features Explained
+
+### AI Companions
+Users can create personalized AI tutors with customizable parameters:
+- **Subject**: Choose from 6 subjects (Math, Science, Language, etc.)
+- **Topic**: Specific learning focus
+- **Voice**: Male or Female voice options
+- **Style**: Formal or Casual teaching approach
+- **Duration**: Estimated session length
+
+### Voice Integration
+Powered by Vapi AI, the platform provides:
+- Real-time voice conversations
+- Natural language processing
+- Adaptive responses based on user needs
+- Multiple voice personas
+
+### User Management
+- Secure authentication via Clerk
+- Personal learning dashboard
+- Progress tracking and analytics
+- Subscription-based feature access
+
+## 🔧 Available Scripts
+
+- `npm run dev` - Start development server with Turbopack
+- `npm run build` - Build for production with Turbopack
+- `npm start` - Start production server
+- `npm run lint` - Run ESLint for code quality
+
+## 📊 Database Schema
+
+### Main Tables
+- **companions**: AI tutor configurations
+- **session_history**: Learning session records
+- **users**: User profiles and preferences
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+1. Connect your GitHub repository to Vercel
+2. Set up environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+### Other Platforms
+The application can be deployed on any platform supporting Next.js:
+- Netlify
+- Railway
+- AWS Amplify
+- DigitalOcean App Platform
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Next.js](https://nextjs.org/) - React framework
+- [Supabase](https://supabase.com/) - Backend as a Service
+- [Clerk](https://clerk.dev/) - Authentication service
+- [Vapi AI](https://vapi.ai/) - Voice AI technology
+- [Vercel](https://vercel.com/) - Deployment platform
+- [Tailwind CSS](https://tailwindcss.com/) - Styling framework
+
+## 📞 Support
+
+For support, email support@converso.ai or join our Discord community.
+
+## 🗺️ Roadmap
+
+- [ ] Mobile app development
+- [ ] Advanced analytics dashboard
+- [ ] Multi-language support
+- [ ] Integration with external LMS platforms
+- [ ] AI-powered assessment tools
+- [ ] Collaborative learning features
