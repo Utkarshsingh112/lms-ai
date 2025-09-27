@@ -2,12 +2,14 @@ import React from "react";
 import CompanionCard from "@/components/CompanionCard";
 import CTA from "@/components/CTA";
 import CompanionsList from "@/components/CompanionsList";
-import { recentSessions } from "@/constants";
 import {
   getAllCompanions,
   getRecentSessions,
 } from "@/lib/actions/companions.action";
 import { getSubjectsColor } from "@/lib/utils";
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 
 const Page = async () => {
   const companions = await getAllCompanions({ limit: 3 });

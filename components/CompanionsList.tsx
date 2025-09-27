@@ -40,7 +40,7 @@ const CompanionsList = ({
           {companions?.map(({ id, subject, name, duration,topic }) => (
             <TableRow key={id}>
               <TableCell>
-                <Link href={'/companion/${id}'}>
+                <Link href={`/companions/${id}`}>
                   <div className="flex items-center gap-3">
                     <div className="size-[62px] flex items-center justify-center rounded-lg max-md:hidden" style={{ backgroundColor: getSubjectsColor(subject) }}>
                       <Image

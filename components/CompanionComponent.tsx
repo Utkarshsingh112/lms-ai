@@ -1,7 +1,7 @@
 "use client";
 
 import { vapi } from "@/lib/vapi.sdk";
-import { useState, useRef, useEffect, use } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn, configureAssistant, getSubjectsColor } from "@/lib/utils";
 import Image from "next/image";
 import Lottie, { LottieRefCurrentProps } from "lottie-react";
@@ -57,7 +57,7 @@ const CompanionComponent = ({
     const onSpeechStart = () => setIsSpeaking(true);
     const onSpeechEnd = () => setIsSpeaking(false);
 
-    const onError = (error: Error) => console.log("Erroor", error);
+    const onError = (error: Error) => console.error("Vapi error:", error);
     vapi.on("call-start", onCallStart);
     vapi.on("call-end", onCallEnd);
     vapi.on("message", onMessage);
@@ -72,7 +72,7 @@ const CompanionComponent = ({
       vapi.off("speech-start", onSpeechStart);
       vapi.off("speech-end", onSpeechEnd);
     };
-  }, []);
+  }, [companionId]);
 
   const toggleMicrophone = () => {
     const isMuted = vapi.isMuted();
@@ -88,7 +88,7 @@ const CompanionComponent = ({
       clientMessages: ["transcript"],
       serverMessages: [],
     };
-    // @ts-expect-error: explanation (example: third-party lib typing issue)
+    // @ts-expect-error - Vapi library has incomplete TypeScript definitions for assistantOverrides parameter
     vapi.start(configureAssistant(voice, style), assistantOverrides);
   };
 

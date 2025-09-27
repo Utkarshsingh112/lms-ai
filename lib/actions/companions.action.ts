@@ -14,6 +14,11 @@ export const createCompanion = async (formData: CreateCompanion) => {
   if (error || !data)
     throw new Error(error?.message || "Failed to create a companion");
 
+  // Revalidate paths that show companions data
+  revalidatePath("/");
+  revalidatePath("/companions");
+  revalidatePath("/my-journey");
+
   return data[0];
 };
 export const getAllCompanions = async ({
@@ -53,17 +58,10 @@ export const getCompanion = async (id: string) => {
     .select()
     .eq("id", id);
 
-  if (error) return console.log(error);
-
-  return data[0];
-};
-export const getcompanion = async (id: string) => {
-  const supabase = createSupabaseClient();
-  const { data, error } = await supabase
-    .from("companions")
-    .select()
-    .eq("id", id);
-  if (error) return console.log(error);
+  if (error) {
+    console.error('Error fetching companion:', error);
+    return null;
+  }
 
   return data[0];
 };
@@ -76,9 +74,13 @@ export const addToSessionHistory = async (companionId: string) => {
   });
   if (error) throw new Error(error.message);
 
+  // Revalidate paths that show session history
+  revalidatePath("/");
+  revalidatePath("/my-journey");
+
   return data;
 };
-export const getRecentSessions = async (limit = 10) => {
+export const getRecentSessions = async (limit = 10): Promise<Companion[]> => {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("session_history")
@@ -88,9 +90,9 @@ export const getRecentSessions = async (limit = 10) => {
 
   if (error) throw new Error(error.message);
 
-  return data.map(({ companions }) => companions);
+  return data.map(({ companions }) => companions).filter(Boolean) as unknown as Companion[];
 };
-export const getUserSessions = async (userId: string, limit = 10) => {
+export const getUserSessions = async (userId: string, limit = 10): Promise<Companion[]> => {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("session_history")
@@ -101,9 +103,9 @@ export const getUserSessions = async (userId: string, limit = 10) => {
 
   if (error) throw new Error(error.message);
 
-  return data.map(({ companions }) => companions);
+  return data.map(({ companions }) => companions).filter(Boolean) as unknown as Companion[];
 };
- export const getUserCompanions = async (userId: string) => {
+ export const getUserCompanions = async (userId: string): Promise<Companion[]> => {
     const supabase = createSupabaseClient();
     const { data, error } = await supabase
         .from('companions')
