@@ -88,7 +88,7 @@ const CompanionComponent = ({
       clientMessages: ["transcript"],
       serverMessages: [],
     };
-    //@ts-expect-error
+    // @ts-expect-error: explanation (example: third-party lib typing issue)
     vapi.start(configureAssistant(voice, style), assistantOverrides);
   };
 
