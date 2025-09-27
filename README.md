@@ -1,6 +1,6 @@
-# Converso - AI-Powered Learning Management System
+# LMS-ai - AI-Powered Learning Management System
 
-Converso is a modern, real-time AI teaching platform that revolutionizes personalized education through interactive AI companions. Built with Next.js 15 and powered by cutting-edge AI voice technology, it offers immersive learning experiences across multiple subjects.
+LMS-AI is a modern, real-time AI teaching platform that revolutionizes personalized education through interactive AI companions. Built with Next.js 15 and powered by cutting-edge AI voice technology, it offers immersive learning experiences across multiple subjects.
 
 ## 🌟 Features
 
