@@ -42,6 +42,11 @@ const CompanionComponent = ({
   }, [isSpeaking, lottieRef]);
 
   useEffect(() => {
+    if (!vapi) {
+      console.error('VAPI not initialized, skipping event listeners setup');
+      return;
+    }
+
     const onCallStart = () => setCallStatus(CallStatus.ACTIVE);
 
     const onCallEnd = () => {
@@ -65,22 +70,32 @@ const CompanionComponent = ({
     vapi.on("speech-start", onSpeechStart);
     vapi.on("speech-end", onSpeechEnd);
     return () => {
-      vapi.off("call-start", onCallStart);
-      vapi.off("call-end", onCallEnd);
-      vapi.off("message", onMessage);
-      vapi.off("error", onError);
-      vapi.off("speech-start", onSpeechStart);
-      vapi.off("speech-end", onSpeechEnd);
+      if (vapi) {
+        vapi.off("call-start", onCallStart);
+        vapi.off("call-end", onCallEnd);
+        vapi.off("message", onMessage);
+        vapi.off("error", onError);
+        vapi.off("speech-start", onSpeechStart);
+        vapi.off("speech-end", onSpeechEnd);
+      }
     };
   }, [companionId]);
 
   const toggleMicrophone = () => {
+    if (!vapi) {
+      console.error('VAPI not initialized');
+      return;
+    }
     const isMuted = vapi.isMuted();
     vapi.setMuted(!isMuted);
     setIsMuted(!isMuted);
   };
 
   const handleCall = async () => {
+    if (!vapi) {
+      console.error('VAPI not initialized');
+      return;
+    }
     setCallStatus(CallStatus.CONNECTING);
 
     const assistantOverrides = {
@@ -93,6 +108,10 @@ const CompanionComponent = ({
   };
 
   const handleDisconnect = () => {
+    if (!vapi) {
+      console.error('VAPI not initialized');
+      return;
+    }
     setCallStatus(CallStatus.FINISHED);
     vapi.stop();
   };
