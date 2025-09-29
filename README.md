@@ -220,9 +220,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - [Vercel](https://vercel.com/) - Deployment platform
 - [Tailwind CSS](https://tailwindcss.com/) - Styling framework
 
-## 📞 Support
-
-For support, email support@converso.ai or join our Discord community.
 
 ## 🗺️ Roadmap
 
