@@ -4,13 +4,16 @@ import CompanionCard from "@/components/CompanionCard";
 import { getSubjectsColor } from "@/lib/utils";
 import SearchInput from "@/components/SearchInput";
 import SubjectFilter from "@/components/SubjectFilter";
+import type { PageSearchParams } from "@/types/companion";
 
-
-//with the help of this we can print the data and object locally in the terminal
-const Companionslibrary = async ({ searchParams }: SearchParams) => {
+const Companionslibrary = async ({ searchParams }: PageSearchParams) => {
   const filters = await searchParams;
-  const subject = filters.subject ? filters.topic : "";
-  const topic = filters.topic ? filters.topic : "";
+  const subject = Array.isArray(filters.subject)
+    ? filters.subject[0]
+    : filters.subject ?? "";
+  const topic = Array.isArray(filters.topic)
+    ? filters.topic[0]
+    : filters.topic ?? "";
 
   const companions = await getAllCompanions({ subject, topic });
   return(

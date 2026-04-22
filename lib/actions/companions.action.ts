@@ -1,146 +1,258 @@
 "use server";
+
 import { auth } from "@clerk/nextjs/server";
-import { createSupabaseClient } from "../supabase";
 import { revalidatePath } from "next/cache";
 
-export const createCompanion = async (formData: CreateCompanion) => {
-  const { userId: author } = await auth();
-  const supabase = createSupabaseClient();
+import { getDatabaseErrorMessage } from "@/lib/errors";
+import { createSupabaseClient } from "@/lib/supabase";
+import type {
+  Companion,
+  CreateCompanionInput,
+  GetAllCompanionsInput,
+  SearchParamValue,
+} from "@/types/companion";
 
+const normalizeFilterValue = (value: SearchParamValue) =>
+  Array.isArray(value) ? value[0] : value;
+
+const logActionError = (
+  action: string,
+  error: unknown,
+  metadata?: Record<string, unknown>
+) => {
+  console.error(`[companions.action] ${action} failed`, {
+    error,
+    ...metadata,
+  });
+};
+
+export const createCompanion = async (formData: CreateCompanionInput) => {
+  const { userId: author } = await auth();
+
+  if (!author) {
+    throw new Error("You must be signed in to create a companion.");
+  }
+
+  const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("companions")
     .insert({ ...formData, author })
-    .select();
-  if (error || !data)
-    throw new Error(error?.message || "Failed to create a companion");
+    .select()
+    .single();
 
-  // Revalidate paths that show companions data
+  if (error || !data) {
+    logActionError("createCompanion", error, { author, formData });
+    throw new Error(
+      getDatabaseErrorMessage(
+        error,
+        "We could not create your companion right now."
+      )
+    );
+  }
+
   revalidatePath("/");
   revalidatePath("/companions");
   revalidatePath("/my-journey");
 
-  return data[0];
+  return data as Companion;
 };
+
 export const getAllCompanions = async ({
   limit = 10,
   page = 1,
   subject,
   topic,
-}: GetAllCompanions) => {
+}: GetAllCompanionsInput) => {
   const supabase = createSupabaseClient();
+  const normalizedSubject = normalizeFilterValue(subject);
+  const normalizedTopic = normalizeFilterValue(topic);
 
   let query = supabase.from("companions").select();
 
-  if (subject && topic) {
+  if (normalizedSubject && normalizedTopic) {
     query = query
-      .ilike("subject", `%${subject}%`)
-      .or(`topic.ilike.%${topic}%,name.ilike.%${topic}%`);
-  } else if (subject) {
-    query = query.ilike("subject", `%${subject}%`);
-  } else if (topic) {
-    query = query.or(`topic.ilike.%${topic}%,name.ilike.%${topic}%`);
+      .ilike("subject", `%${normalizedSubject}%`)
+      .or(`topic.ilike.%${normalizedTopic}%,name.ilike.%${normalizedTopic}%`);
+  } else if (normalizedSubject) {
+    query = query.ilike("subject", `%${normalizedSubject}%`);
+  } else if (normalizedTopic) {
+    query = query.or(
+      `topic.ilike.%${normalizedTopic}%,name.ilike.%${normalizedTopic}%`
+    );
   }
 
-  query = query.range((page - 1) * limit, page * limit - 1);
+  const { data, error } = await query.range((page - 1) * limit, page * limit - 1);
 
-  const { data: companions, error } = await query;
+  if (error) {
+    logActionError("getAllCompanions", error, {
+      limit,
+      page,
+      normalizedSubject,
+      normalizedTopic,
+    });
+    throw new Error(
+      getDatabaseErrorMessage(error, "We could not load companions right now.")
+    );
+  }
 
-  if (error) throw new Error(error.message);
-
-  return companions;
+  return (data ?? []) as Companion[];
 };
 
 export const getCompanion = async (id: string) => {
   const supabase = createSupabaseClient();
-
   const { data, error } = await supabase
     .from("companions")
     .select()
-    .eq("id", id);
+    .eq("id", id)
+    .maybeSingle();
 
   if (error) {
-    console.error('Error fetching companion:', error);
-    return null;
+    logActionError("getCompanion", error, { id });
+    throw new Error(
+      getDatabaseErrorMessage(error, "We could not load this companion.")
+    );
   }
 
-  return data[0];
+  return (data as Companion | null) ?? null;
 };
+
 export const addToSessionHistory = async (companionId: string) => {
   const { userId } = await auth();
+
+  if (!userId) {
+    throw new Error("You must be signed in to save session history.");
+  }
+
   const supabase = createSupabaseClient();
   const { data, error } = await supabase.from("session_history").insert({
     companion_id: companionId,
     user_id: userId,
   });
-  if (error) throw new Error(error.message);
 
-  // Revalidate paths that show session history
+  if (error) {
+    logActionError("addToSessionHistory", error, { companionId, userId });
+    throw new Error(
+      getDatabaseErrorMessage(
+        error,
+        "We could not save this session to your history."
+      )
+    );
+  }
+
   revalidatePath("/");
   revalidatePath("/my-journey");
 
   return data;
 };
+
 export const getRecentSessions = async (limit = 10): Promise<Companion[]> => {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("session_history")
-    .select(`companions:companion_id (*)`)
+    .select("companions:companion_id (*)")
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    logActionError("getRecentSessions", error, { limit });
+    throw new Error(
+      getDatabaseErrorMessage(
+        error,
+        "We could not load recent sessions right now."
+      )
+    );
+  }
 
-  return data.map(({ companions }) => companions).filter(Boolean) as unknown as Companion[];
+  return data
+    .map(({ companions }) => companions)
+    .filter(Boolean) as unknown as Companion[];
 };
-export const getUserSessions = async (userId: string, limit = 10): Promise<Companion[]> => {
+
+export const getUserSessions = async (
+  userId: string,
+  limit = 10
+): Promise<Companion[]> => {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("session_history")
-    .select(`companions:companion_id (*)`)
+    .select("companions:companion_id (*)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    logActionError("getUserSessions", error, { userId, limit });
+    throw new Error(
+      getDatabaseErrorMessage(
+        error,
+        "We could not load your session history right now."
+      )
+    );
+  }
 
-  return data.map(({ companions }) => companions).filter(Boolean) as unknown as Companion[];
+  return data
+    .map(({ companions }) => companions)
+    .filter(Boolean) as unknown as Companion[];
 };
- export const getUserCompanions = async (userId: string): Promise<Companion[]> => {
-    const supabase = createSupabaseClient();
-    const { data, error } = await supabase
-        .from('companions')
-        .select()
-        .eq('author', userId)
 
-    if(error) throw new Error(error.message);
+export const getUserCompanions = async (userId: string): Promise<Companion[]> => {
+  const supabase = createSupabaseClient();
+  const { data, error } = await supabase
+    .from("companions")
+    .select()
+    .eq("author", userId);
 
-    return data;
-}
+  if (error) {
+    logActionError("getUserCompanions", error, { userId });
+    throw new Error(
+      getDatabaseErrorMessage(
+        error,
+        "We could not load your companions right now."
+      )
+    );
+  }
+
+  return (data ?? []) as Companion[];
+};
+
 export const newCompanionPermissions = async () => {
-    const { userId, has } = await auth();
-    const supabase = createSupabaseClient();
+  const { userId, has } = await auth();
 
-     let limit = 0;
+  if (!userId) {
+    return false;
+  }
 
-    if(has({ plan: 'pro' })) {
-        return true;
-    } else if(has({ feature: "3_companion_limit" })) {
-        limit = 3;
-    } else if(has({ feature: "10_active_companion_limit" })) {
-        limit = 10;
-    }
-      const { data, error } = await supabase
-        .from('companions')
-        .select('id', { count: 'exact' })
-        .eq('author', userId)
-        
-          if(error) throw new Error(error.message);
+  if (has({ plan: "pro" })) {
+    return true;
+  }
 
-    const companionCount = data?.length;
+  let limit = 0;
 
-      if(companionCount >= limit) {
-        return false
-    } else {
-        return true;
-    }
-}
+  if (has({ feature: "10_active_companion_limit" })) {
+    limit = 10;
+  } else if (has({ feature: "3_companion_limit" })) {
+    limit = 3;
+  }
+
+  if (limit === 0) {
+    return false;
+  }
+
+  const supabase = createSupabaseClient();
+  const { count, error } = await supabase
+    .from("companions")
+    .select("id", { count: "exact", head: true })
+    .eq("author", userId);
+
+  if (error) {
+    logActionError("newCompanionPermissions", error, { userId, limit });
+    throw new Error(
+      getDatabaseErrorMessage(
+        error,
+        "We could not verify your companion limit right now."
+      )
+    );
+  }
+
+  return (count ?? 0) < limit;
+};

@@ -25,7 +25,16 @@ const Profile = async() => {
    <main className='min-lg:w-3/4'>
     <section className='flex jsutify-between gap-4 max-sm:flex-col items-centre'>
         <div className="flex gap-4 items-center">
-      <Image src={user.imageUrl!} alt={user.firstName!} width={110} height={110} className="rounded-full"/>
+      <Image
+        src={user.imageUrl!}
+        alt={user.firstName!}
+        width={110}
+        height={110}
+        className="rounded-full"
+        sizes="(max-width: 640px) 28vw, 110px"
+        placeholder="blur"
+        blurDataURL="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNicgaGVpZ2h0PScxNic+PHJlY3Qgd2lkdGg9JzE2JyBoZWlnaHQ9JzE2JyBmaWxsPScjZjNlNmVmJy8+PC9zdmc+"
+      />
        <div className="flex flex-col gap-2">
             <h1 className="font-bold text-2xl">
               {user.firstName} {user.lastName}
@@ -43,6 +52,7 @@ const Profile = async() => {
                 alt="checkmark"
                 width={22}
                 height={22}
+                sizes="22px"
               />
               <p className="text-2xl font-bold">{sessionHistory.length}</p>
             </div>
@@ -50,7 +60,7 @@ const Profile = async() => {
           </div>
           <div className="border border-black rouded-lg p-3 gap-2 flex flex-col h-fit">
             <div className="flex gap-2 items-center">
-              <Image src="/icons/cap.svg" alt="cap" width={22} height={22} />
+              <Image src="/icons/cap.svg" alt="cap" width={22} height={22} sizes="22px" />
               <p className="text-2xl font-bold">{companions.length}</p>
             </div>
             <div>Companions created</div>

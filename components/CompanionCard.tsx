@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import React from "react";
 import Link from "next/link";
@@ -30,19 +28,18 @@ const CompanionCard = ({
             alt="bookmark"
             width={12.5}
             height={15}
+            sizes="13px"
           />
         </button>
       </div>
       <h2 className="text-2xl font-bold">{name}</h2>
       <p className="text-sm">{topic}</p>
       <div className="flex items-center gap-2">
-        <Image src="/icons/clock.svg" alt="clock" width={12.5} height={15} />
+        <Image src="/icons/clock.svg" alt="clock" width={12.5} height={15} sizes="13px" />
         <p className="text-sm">{duration} minutes</p>
       </div>
-      <Link href={`/companions/${id}`} className="w-full">
-        <button className="btn-primary w-full justify-center">
-          Launch Session
-        </button>
+      <Link href={`/companions/${id}`} className="btn-primary w-full justify-center">
+        Launch Session
       </Link>
     </article>
   );

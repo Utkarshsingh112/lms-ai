@@ -1,9 +1,17 @@
 "use client";
-import { createCompanion } from "@/lib/actions/companions.action";
+
+import React, { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { redirect } from "next/navigation";
-import { z } from "zod";
+
+import { createCompanion } from "@/lib/actions/companions.action";
+import { getErrorMessage } from "@/lib/errors";
+import {
+  companionFormSchema,
+  type CompanionFormValues,
+} from "@/lib/validations/companion";
+import { subjects } from "@/constants";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -21,23 +29,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import React from "react";
-import { subjects } from "@/constants";
+
 import { Textarea } from "./ui/textarea";
 
-const formSchema = z.object({
-  name: z.string().min(1, { message: "companion is required." }),
-  subject: z.string().min(1, { message: "subject is required." }),
-  topic: z.string().min(1, { message: "topic is required." }),
-  voice: z.string().min(1, { message: "voice is required." }),
-  style: z.string().min(1, { message: "style is required." }),
-  duration: z.coerce.number().min(1, { message: "duration is required." }),
-});
-
 const CompanionForm = () => {
-  // 1. Define your form.
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const router = useRouter();
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const form = useForm<CompanionFormValues>({
+    resolver: zodResolver(companionFormSchema),
     defaultValues: {
       name: "",
       subject: "",
@@ -48,20 +48,31 @@ const CompanionForm = () => {
     },
   });
 
-  const onSubmit =async(values: z.infer<typeof formSchema>) => {
-   const companion = await createCompanion(values);
-   if(companion){
-    redirect(`/companions/${companion.id}`);
-   }else{
-    // Handle companion creation failure
-    redirect('/');
-   }
+  const onSubmit = (values: CompanionFormValues) => {
+    setSubmissionError(null);
+
+    startTransition(async () => {
+      try {
+        const companion = await createCompanion(values);
+        router.push(`/companions/${companion.id}`);
+      } catch (error) {
+        setSubmissionError(getErrorMessage(error));
+      }
+    });
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Companion name */}
+        {submissionError ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {submissionError}
+          </div>
+        ) : null}
+
         <FormField
           control={form.control}
           name="name"
@@ -80,7 +91,6 @@ const CompanionForm = () => {
           )}
         />
 
-        {/* Subject */}
         <FormField
           control={form.control}
           name="subject"
@@ -110,7 +120,6 @@ const CompanionForm = () => {
           )}
         />
 
-        {/* Topic */}
         <FormField
           control={form.control}
           name="topic"
@@ -129,7 +138,6 @@ const CompanionForm = () => {
           )}
         />
 
-        {/* Voice */}
         <FormField
           control={form.control}
           name="voice"
@@ -152,7 +160,6 @@ const CompanionForm = () => {
           )}
         />
 
-        {/* Style */}
         <FormField
           control={form.control}
           name="style"
@@ -175,7 +182,6 @@ const CompanionForm = () => {
           )}
         />
 
-        {/* Duration */}
         <FormField
           control={form.control}
           name="duration"
@@ -195,8 +201,8 @@ const CompanionForm = () => {
           )}
         />
 
-        <Button type="submit" className="w-full cursor-pointer">
-          Build Your Companion
+        <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
+          {isPending ? "Building Companion..." : "Build Your Companion"}
         </Button>
       </form>
     </Form>

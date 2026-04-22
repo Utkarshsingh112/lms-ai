@@ -1,20 +1,28 @@
-import Vapi from "@vapi-ai/web"
+import type Vapi from "@vapi-ai/web";
 
-const token = process.env.NEXT_PUBLIC_WEB_TOKEN
-if (!token) {
-  console.error("Missing NEXT_PUBLIC_WEB_TOKEN environment variable")
-  throw new Error("Missing NEXT_PUBLIC_WEB_TOKEN")
-}
+let vapiPromise: Promise<Vapi | null> | null = null;
 
-// Only initialize Vapi in client-side environment
-let vapiInstance: Vapi | null = null;
-
-if (typeof window !== 'undefined') {
-  try {
-    vapiInstance = new Vapi(token);
-  } catch (error) {
-    console.error('Failed to initialize Vapi:', error);
+export const getVapi = async (): Promise<Vapi | null> => {
+  if (typeof window === "undefined") {
+    return null;
   }
-}
 
-export const vapi = vapiInstance!
+  const token = process.env.NEXT_PUBLIC_WEB_TOKEN;
+
+  if (!token) {
+    console.error("Missing NEXT_PUBLIC_WEB_TOKEN environment variable");
+    return null;
+  }
+
+  if (!vapiPromise) {
+    vapiPromise = import("@vapi-ai/web")
+      .then(({ default: VapiClient }) => new VapiClient(token))
+      .catch((error) => {
+        console.error("Failed to initialize Vapi:", error);
+        vapiPromise = null;
+        return null;
+      });
+  }
+
+  return vapiPromise;
+};
