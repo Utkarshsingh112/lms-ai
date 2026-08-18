@@ -1,0 +1,39 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every 3 days to ensure database stays active
+    - cron: '0 0 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+        run: |
+          echo "Pinging Supabase to prevent auto-pausing due to inactivity..."
+          
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            echo "Sending direct REST API request to Supabase..."
+            curl -s -f -X GET "$SUPABASE_URL/rest/v1/companions?select=id&limit=1" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+            echo -e "\nSupabase REST API successfully pinged."
+          fi
+
+          if [ -n "$APP_URL" ]; then
+            echo "Pinging application keep-alive route..."
+            curl -s -f -X GET "$APP_URL/api/keep-alive"
+            echo -e "\nApplication keep-alive route successfully pinged."
+          fi
+
+          if [ -z "$SUPABASE_URL" ] && [ -z "$APP_URL" ]; then
+            echo "Notice: Neither SUPABASE_URL nor APP_URL secret is configured in GitHub Secrets."
+            echo "Please configure NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY in your GitHub repository secrets."
+            exit 1
+          fi
