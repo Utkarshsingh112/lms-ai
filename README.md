@@ -84,6 +84,23 @@ CRON_SECRET=a_long_random_string
 SENTRY_AUTH_TOKEN=your_sentry_auth_token
 ```
 
+## 🧪 Local UI testing with mock credentials
+
+No Clerk, Supabase or Vapi accounts needed to look at the UI:
+
+```bash
+npm install
+npm run dev:mock
+```
+
+- Library and home pages run against an in-memory Supabase mock.
+- `http://localhost:3000/dev/session` shows the full session screen (3D orb,
+  live captions, waveform, subject backdrops, summary) driven by a scripted
+  voice call. Add `?subject=maths` (or coding, history, ...) to switch subjects.
+- Sign-in, My Journey and creating companions need real Clerk keys.
+- The mock only runs outside production (`NEXT_PUBLIC_MOCK_VAPI` is ignored in
+  production builds and `/dev/session` returns 404).
+
 ## 🚀 Getting Started
 
 1. **Clone the repository**

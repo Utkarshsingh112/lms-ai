@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Navitems from './Navitems'
 // import { Button } from './ui/button'
 import { SignedIn, SignedOut, UserButton, SignInButton } from '@clerk/nextjs';
+import { isMockMode } from '@/lib/mock-mode';
 
 const Navbar = () => {
   return (
@@ -20,6 +21,12 @@ const Navbar = () => {
       </Link>
       <div className="flex items-center gap-8 max-sm:gap-3">
        <Navitems/>
+        {isMockMode ? (
+          <span className="btn-signin" title="Mock mode: Clerk is disabled">
+            Mock user
+          </span>
+        ) : (
+          <>
         <SignedOut>
                     <SignInButton>
                         <button className="btn-signin">Sign In</button>
@@ -28,6 +35,8 @@ const Navbar = () => {
                 <SignedIn>
                     <UserButton />
                 </SignedIn>
+          </>
+        )}
       </div>
     </nav>
   )
