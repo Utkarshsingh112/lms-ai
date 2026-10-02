@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { getDatabaseErrorMessage } from "@/lib/errors";
 import { createSupabaseClient } from "@/lib/supabase";
+import { quoteFilterValue, toIlikePattern } from "@/lib/utils";
+import { companionFormSchema } from "@/lib/validations/companion";
 import type {
   Companion,
   CreateCompanionInput,
@@ -26,28 +28,117 @@ const logActionError = (
   });
 };
 
+const LIMIT_REACHED_MESSAGE =
+  "You have reached your companion limit. Upgrade your plan to create more.";
+
+type SupabaseClient = ReturnType<typeof createSupabaseClient>;
+
+const countUserCompanions = async (
+  supabase: SupabaseClient,
+  userId: string
+) => {
+  const { count, error } = await supabase
+    .from("companions")
+    .select("id", { count: "exact", head: true })
+    .eq("author", userId);
+
+  if (error) {
+    logActionError("countUserCompanions", error, { userId });
+    throw new Error(
+      getDatabaseErrorMessage(
+        error,
+        "We could not verify your companion limit right now."
+      )
+    );
+  }
+
+  return count ?? 0;
+};
+
+// Returns how many companions the signed-in user may own (Infinity for pro).
+const getCompanionLimit = async (): Promise<{
+  userId: string | null;
+  limit: number;
+}> => {
+  const { userId, has } = await auth();
+
+  if (!userId) {
+    return { userId: null, limit: 0 };
+  }
+
+  if (has({ plan: "pro" })) {
+    return { userId, limit: Infinity };
+  }
+
+  if (has({ feature: "10_active_companion_limit" })) {
+    return { userId, limit: 10 };
+  }
+
+  if (has({ feature: "3_companion_limit" })) {
+    return { userId, limit: 3 };
+  }
+
+  return { userId, limit: 0 };
+};
+
 export const createCompanion = async (formData: CreateCompanionInput) => {
-  const { userId: author } = await auth();
+  const { userId: author, limit } = await getCompanionLimit();
 
   if (!author) {
     throw new Error("You must be signed in to create a companion.");
   }
 
+  const parsed = companionFormSchema.safeParse(formData);
+
+  if (!parsed.success) {
+    throw new Error(
+      parsed.error.issues[0]?.message ?? "Invalid companion details."
+    );
+  }
+
   const supabase = createSupabaseClient();
+
+  if (
+    Number.isFinite(limit) &&
+    (await countUserCompanions(supabase, author)) >= limit
+  ) {
+    throw new Error(LIMIT_REACHED_MESSAGE);
+  }
+
+  // Only the validated fields are persisted; never spread raw client input.
   const { data, error } = await supabase
     .from("companions")
-    .insert({ ...formData, author })
+    .insert({ ...parsed.data, author })
     .select()
     .single();
 
   if (error || !data) {
-    logActionError("createCompanion", error, { author, formData });
+    logActionError("createCompanion", error, { author });
     throw new Error(
       getDatabaseErrorMessage(
         error,
         "We could not create your companion right now."
       )
     );
+  }
+
+  // The check above and the insert are separate calls, so concurrent requests
+  // can slip past it. Re-count and roll back the new row if we went over.
+  if (
+    Number.isFinite(limit) &&
+    (await countUserCompanions(supabase, author)) > limit
+  ) {
+    const { error: rollbackError } = await supabase
+      .from("companions")
+      .delete()
+      .eq("id", (data as Companion).id)
+      .eq("author", author);
+
+    if (rollbackError) {
+      logActionError("createCompanion.rollback", rollbackError, { author });
+    }
+
+    throw new Error(LIMIT_REACHED_MESSAGE);
   }
 
   revalidatePath("/");
@@ -69,16 +160,13 @@ export const getAllCompanions = async ({
 
   let query = supabase.from("companions").select();
 
-  if (normalizedSubject && normalizedTopic) {
-    query = query
-      .ilike("subject", `%${normalizedSubject}%`)
-      .or(`topic.ilike.%${normalizedTopic}%,name.ilike.%${normalizedTopic}%`);
-  } else if (normalizedSubject) {
-    query = query.ilike("subject", `%${normalizedSubject}%`);
-  } else if (normalizedTopic) {
-    query = query.or(
-      `topic.ilike.%${normalizedTopic}%,name.ilike.%${normalizedTopic}%`
-    );
+  if (normalizedSubject) {
+    query = query.ilike("subject", toIlikePattern(normalizedSubject));
+  }
+
+  if (normalizedTopic) {
+    const pattern = quoteFilterValue(toIlikePattern(normalizedTopic));
+    query = query.or(`topic.ilike.${pattern},name.ilike.${pattern}`);
   }
 
   const { data, error } = await query.range((page - 1) * limit, page * limit - 1);
@@ -145,27 +233,15 @@ export const addToSessionHistory = async (companionId: string) => {
   return data;
 };
 
+// Scoped to the signed-in user; signed-out visitors get an empty list.
 export const getRecentSessions = async (limit = 10): Promise<Companion[]> => {
-  const supabase = createSupabaseClient();
-  const { data, error } = await supabase
-    .from("session_history")
-    .select("companions:companion_id (*)")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const { userId } = await auth();
 
-  if (error) {
-    logActionError("getRecentSessions", error, { limit });
-    throw new Error(
-      getDatabaseErrorMessage(
-        error,
-        "We could not load recent sessions right now."
-      )
-    );
+  if (!userId) {
+    return [];
   }
 
-  return data
-    .map(({ companions }) => companions)
-    .filter(Boolean) as unknown as Companion[];
+  return getUserSessions(userId, limit);
 };
 
 export const getUserSessions = async (
@@ -216,43 +292,17 @@ export const getUserCompanions = async (userId: string): Promise<Companion[]> =>
 };
 
 export const newCompanionPermissions = async () => {
-  const { userId, has } = await auth();
+  const { userId, limit } = await getCompanionLimit();
 
-  if (!userId) {
+  if (!userId || limit === 0) {
     return false;
   }
 
-  if (has({ plan: "pro" })) {
+  if (!Number.isFinite(limit)) {
     return true;
   }
 
-  let limit = 0;
+  const count = await countUserCompanions(createSupabaseClient(), userId);
 
-  if (has({ feature: "10_active_companion_limit" })) {
-    limit = 10;
-  } else if (has({ feature: "3_companion_limit" })) {
-    limit = 3;
-  }
-
-  if (limit === 0) {
-    return false;
-  }
-
-  const supabase = createSupabaseClient();
-  const { count, error } = await supabase
-    .from("companions")
-    .select("id", { count: "exact", head: true })
-    .eq("author", userId);
-
-  if (error) {
-    logActionError("newCompanionPermissions", error, { userId, limit });
-    throw new Error(
-      getDatabaseErrorMessage(
-        error,
-        "We could not verify your companion limit right now."
-      )
-    );
-  }
-
-  return (count ?? 0) < limit;
+  return count < limit;
 };

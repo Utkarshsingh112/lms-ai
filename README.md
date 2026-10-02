@@ -77,6 +77,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 # Vapi AI
 NEXT_PUBLIC_WEB_TOKEN=your_vapi_web_token
 
+# Cron auth for /api/keep-alive (required; Vercel Cron sends it automatically)
+CRON_SECRET=a_long_random_string
+
 # Sentry (Optional)
 SENTRY_AUTH_TOKEN=your_sentry_auth_token
 ```
