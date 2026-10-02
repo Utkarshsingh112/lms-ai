@@ -7,6 +7,17 @@ export const getVapi = async (): Promise<Vapi | null> => {
     return null;
   }
 
+  // Local-only scripted voice session; never active in production builds.
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.NEXT_PUBLIC_MOCK_VAPI === "true"
+  ) {
+    vapiPromise ??= import("@/lib/vapi.mock").then(({ createMockVapi }) =>
+      createMockVapi()
+    );
+    return vapiPromise;
+  }
+
   const token = process.env.NEXT_PUBLIC_WEB_TOKEN;
 
   if (!token) {
