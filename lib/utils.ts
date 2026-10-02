@@ -10,16 +10,37 @@ export function getSubjectsColor(subject: string) {
   return subjectsColors[subject as keyof typeof subjectsColors];
 }
 
-export const configureAssistant = (voice: string, style: string) => {
+// Escapes LIKE wildcards so user input is matched literally.
+const escapeLikeValue = (value: string) => value.replace(/[\\%_]/g, "\\$&");
+
+// Builds a contains-style ILIKE pattern from raw user input.
+export const toIlikePattern = (value: string) => `%${escapeLikeValue(value)}%`;
+
+// Quotes a PostgREST filter value so commas, parentheses and dots in user
+// input cannot break out of an `.or()` filter expression.
+export const quoteFilterValue = (value: string) =>
+  `"${value.replace(/[\\"]/g, "\\$&")}"`;
+
+const FALLBACK_VOICE_ID = "sarah";
+
+export const configureAssistant = (
+  voice: string,
+  style: string,
+  duration?: number
+) => {
   const voiceId =
-    voices[voice as keyof typeof voices][
+    voices[voice as keyof typeof voices]?.[
       style as keyof (typeof voices)[keyof typeof voices]
-    ] || "sarah";
+    ] || FALLBACK_VOICE_ID;
 
   const vapiAssistant: CreateAssistantDTO = {
     name: "Companion",
+    // Hard-stop the call at the companion's configured length.
+    ...(duration && duration > 0
+      ? { maxDurationSeconds: Math.max(10, Math.round(duration * 60)) }
+      : {}),
     firstMessage:
-      "Hello, let's start the session. Today we'll be talking about {{topic}}.", //yha pe topic as  varibale pass kar rhe hai
+      "Hello, let's start the session. Today we'll be talking about {{topic}}.", // {{topic}} is filled in from the call's variableValues
     transcriber: {
       provider: "deepgram",
       model: "nova-3",
@@ -36,7 +57,7 @@ export const configureAssistant = (voice: string, style: string) => {
     },
     model: {
       provider: "openai",
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

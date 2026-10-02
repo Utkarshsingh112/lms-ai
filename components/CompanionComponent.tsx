@@ -40,6 +40,7 @@ const CompanionComponent = ({
   userImage,
   style,
   voice,
+  duration,
 }: CompanionComponentProps) => {
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -172,7 +173,7 @@ const CompanionComponent = ({
     };
 
     // @ts-expect-error - Vapi library has incomplete TypeScript definitions for assistantOverrides parameter
-    vapi.start(configureAssistant(voice, style), assistantOverrides);
+    vapi.start(configureAssistant(voice, style, duration), assistantOverrides);
   };
 
   const handleDisconnect = () => {

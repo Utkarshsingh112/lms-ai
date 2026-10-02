@@ -1,5 +1,8 @@
 name: Keep Supabase Alive
 
+# The app's Vercel cron (see vercel.json) pings /api/keep-alive daily. This
+# workflow is an independent backup that talks to Supabase directly, so it keeps
+# working even if the app deployment is down.
 on:
   schedule:
     # Runs at 00:00 UTC every 3 days to ensure database stays active
@@ -14,26 +17,14 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
         run: |
-          echo "Pinging Supabase to prevent auto-pausing due to inactivity..."
-          
-          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
-            echo "Sending direct REST API request to Supabase..."
-            curl -s -f -X GET "$SUPABASE_URL/rest/v1/companions?select=id&limit=1" \
-              -H "apikey: $SUPABASE_ANON_KEY" \
-              -H "Authorization: Bearer $SUPABASE_ANON_KEY"
-            echo -e "\nSupabase REST API successfully pinged."
-          fi
-
-          if [ -n "$APP_URL" ]; then
-            echo "Pinging application keep-alive route..."
-            curl -s -f -X GET "$APP_URL/api/keep-alive"
-            echo -e "\nApplication keep-alive route successfully pinged."
-          fi
-
-          if [ -z "$SUPABASE_URL" ] && [ -z "$APP_URL" ]; then
-            echo "Notice: Neither SUPABASE_URL nor APP_URL secret is configured in GitHub Secrets."
-            echo "Please configure NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY in your GitHub repository secrets."
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set as GitHub repository secrets."
             exit 1
           fi
+
+          echo "Pinging Supabase to prevent auto-pausing due to inactivity..."
+          curl -sS -f -X GET "$SUPABASE_URL/rest/v1/companions?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+          echo -e "\nSupabase REST API successfully pinged."

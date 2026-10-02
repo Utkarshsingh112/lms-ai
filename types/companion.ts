@@ -49,4 +49,5 @@ export interface CompanionComponentProps {
   userImage: string;
   voice: string;
   style: string;
+  duration?: number;
 }

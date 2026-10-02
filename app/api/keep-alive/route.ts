@@ -8,8 +8,17 @@ export async function GET(request: Request) {
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
-    // If CRON_SECRET is configured, enforce authorization
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // Fail closed: Vercel Cron sends `Authorization: Bearer $CRON_SECRET`
+    // automatically once CRON_SECRET is set in the project's env vars.
+    if (!cronSecret) {
+      console.error("[keep-alive] CRON_SECRET is not configured");
+      return NextResponse.json(
+        { success: false, error: "CRON_SECRET is not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
