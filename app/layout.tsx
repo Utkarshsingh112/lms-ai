@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { isMockMode } from "@/lib/mock-mode";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -23,12 +24,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${bricolage.variable} antialiased`}>
-        <ClerkProvider appearance={{elements: {  formButtonPrimary: "#fe5933" }}}>
+        {isMockMode ? (
           <ErrorBoundary>
             <Navbar />
             {children}
           </ErrorBoundary>
-        </ClerkProvider>
+        ) : (
+          <ClerkProvider appearance={{elements: {  formButtonPrimary: "#fe5933" }}}>
+            <ErrorBoundary>
+              <Navbar />
+              {children}
+            </ErrorBoundary>
+          </ClerkProvider>
+        )}
         </body>
     </html>
   );

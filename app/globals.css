@@ -237,7 +237,8 @@ body {
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 400px;
+    min-height: 470px;
+    padding-bottom: 76px;
     overflow: hidden;
     perspective: 900px;
     background:
@@ -256,7 +257,8 @@ body {
   }
   @media (max-width: 639px) {
     .orb-stage {
-      min-height: 220px;
+      min-height: 260px;
+      padding-bottom: 56px;
     }
   }
 
@@ -463,6 +465,136 @@ body {
     }
     .orb-scene {
       transform: none;
+      transition: none;
+    }
+  }
+}
+
+/* Live caption, subject glyphs and voice waveform */
+@layer components {
+  .orb-glyph {
+    position: absolute;
+    z-index: -1;
+    font-weight: 700;
+    line-height: 1;
+    color: color-mix(in srgb, var(--orb) 45%, black);
+    opacity: 0.28;
+    user-select: none;
+    animation: orb-glyph 9s ease-in-out infinite;
+  }
+
+  .orb-wave {
+    position: absolute;
+    width: 0;
+    height: 0;
+    transform-style: preserve-3d;
+    transform: translateZ(-10px);
+  }
+  .orb-bar {
+    position: absolute;
+    left: -2.5px;
+    top: -196px;
+    width: 5px;
+    height: 196px;
+    transform-origin: 50% 100%;
+    transform: rotate(calc(var(--i) * 7.5deg));
+  }
+  .orb-bar i {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 34px;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--orb) 60%, black);
+    opacity: 0.6;
+    transform-origin: 50% 100%;
+    transform: scaleY(0.15);
+    transition: transform 0.09s linear;
+  }
+  .orb-stage[data-state="speaking"] .orb-bar i {
+    opacity: 0.85;
+    transform: scaleY(min(1.9, calc(0.15 + var(--level) * var(--amp) * 2.4)));
+  }
+  .orb-stage[data-state="listening"] .orb-bar i,
+  .orb-stage[data-state="connecting"] .orb-bar i {
+    animation: orb-bar-idle 1.8s ease-in-out infinite;
+    animation-delay: calc(var(--i) * -0.09s);
+  }
+
+  .orb-caption {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    z-index: 5;
+    max-width: min(92%, 620px);
+    padding: 8px 18px;
+    border-radius: 1.25rem;
+    background: rgb(0 0 0 / 0.78);
+    color: white;
+    font-size: 15px;
+    line-height: 1.35;
+    text-align: center;
+    opacity: 0;
+    transform: translate(-50%, 8px);
+    transition:
+      opacity 0.25s ease,
+      transform 0.25s ease;
+    pointer-events: none;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .orb-caption-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  .orb-caption[data-role="user"] {
+    background: color-mix(in srgb, var(--orb) 55%, black);
+    font-style: italic;
+  }
+
+  @media (max-width: 639px) {
+    .orb-wave {
+      scale: 0.4;
+    }
+    .orb-caption {
+      -webkit-line-clamp: 2;
+      font-size: 12px;
+      padding: 6px 12px;
+      bottom: 8px;
+    }
+    .orb-glyph {
+      font-size: 14px !important;
+    }
+  }
+
+  @keyframes orb-glyph {
+    0%,
+    100% {
+      transform: translateY(0) rotate(-4deg);
+    }
+    50% {
+      transform: translateY(-14px) rotate(5deg);
+    }
+  }
+  @keyframes orb-bar-idle {
+    0%,
+    100% {
+      transform: scaleY(0.15);
+    }
+    50% {
+      transform: scaleY(0.55);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .orb-glyph,
+    .orb-bar i {
+      animation: none !important;
+    }
+    .orb-caption {
       transition: none;
     }
   }

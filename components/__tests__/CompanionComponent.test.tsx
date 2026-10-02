@@ -17,6 +17,7 @@ const fakeVapi = {
   setMuted: jest.fn(),
 };
 const addToSessionHistoryMock = jest.fn();
+const playChimeMock = jest.fn();
 
 jest.mock("@/lib/vapi.sdk", () => ({
   getVapi: () => Promise.resolve(fakeVapi),
@@ -24,6 +25,13 @@ jest.mock("@/lib/vapi.sdk", () => ({
 
 jest.mock("@/lib/actions/companions.action", () => ({
   addToSessionHistory: (...args: unknown[]) => addToSessionHistoryMock(...args),
+}));
+
+jest.mock("@/lib/chime", () => ({
+  playChime: (...args: unknown[]) => playChimeMock(...args),
+  readSoundPreference: () => window.localStorage.getItem("lms-ai:sounds") !== "off",
+  writeSoundPreference: (enabled: boolean) =>
+    window.localStorage.setItem("lms-ai:sounds", enabled ? "on" : "off"),
 }));
 
 jest.mock("next/dynamic", () => () => function LottieStub() {
@@ -53,6 +61,7 @@ const renderSession = () =>
 describe("CompanionComponent", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.localStorage.clear();
     jest.useFakeTimers();
     addToSessionHistoryMock.mockResolvedValue(undefined);
   });
@@ -158,5 +167,71 @@ describe("CompanionComponent", () => {
 
     emit("speech-end");
     expect(stage).toHaveAttribute("data-state", "listening");
+  });
+
+  it("shows live captions for partial transcripts, then fades them", async () => {
+    const { container } = renderSession();
+    await screen.findByRole("button", { name: "Start Session" });
+    emit("call-start");
+
+    emit("message", {
+      type: "transcript",
+      transcriptType: "partial",
+      role: "assistant",
+      transcript: "Photosynthesis turns light",
+    });
+
+    const caption = container.querySelector(".orb-caption") as HTMLElement;
+    expect(caption).toHaveClass("orb-caption-visible");
+    expect(caption).toHaveTextContent("Photosynthesis turns light");
+
+    emit("message", {
+      type: "transcript",
+      transcriptType: "final",
+      role: "assistant",
+      transcript: "Photosynthesis turns light into energy.",
+    });
+    act(() => {
+      jest.advanceTimersByTime(2500);
+    });
+    expect(caption).not.toHaveClass("orb-caption-visible");
+  });
+
+  it("keeps only the newest words for very long captions", async () => {
+    const { container } = renderSession();
+    await screen.findByRole("button", { name: "Start Session" });
+    emit("call-start");
+
+    const long = Array.from({ length: 60 }, (_, i) => `word${i}`).join(" ");
+    emit("message", {
+      type: "transcript",
+      transcriptType: "partial",
+      role: "assistant",
+      transcript: long,
+    });
+
+    const caption = container.querySelector(".orb-caption") as HTMLElement;
+    expect(caption.textContent?.startsWith("…")).toBe(true);
+    expect(caption.textContent).toContain("word59");
+    expect(caption.textContent).not.toContain("word0 ");
+  });
+
+  it("plays chimes unless sounds are switched off", async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderSession();
+    await screen.findByRole("button", { name: "Start Session" });
+
+    emit("call-start");
+    emit("call-end");
+    expect(playChimeMock).toHaveBeenCalledWith("start");
+    expect(playChimeMock).toHaveBeenCalledWith("end");
+
+    playChimeMock.mockClear();
+    await user.click(screen.getByRole("button", { name: "Sounds on" }));
+    expect(screen.getByRole("button", { name: "Sounds off" })).toBeInTheDocument();
+    expect(window.localStorage.getItem("lms-ai:sounds")).toBe("off");
+
+    emit("call-start");
+    expect(playChimeMock).not.toHaveBeenCalled();
   });
 });

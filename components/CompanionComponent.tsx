@@ -11,11 +11,17 @@ import CompanionOrb, { type OrbState } from "@/components/CompanionOrb";
 import soundwaves from "@/constants/soundwaves.json";
 import { addToSessionHistory } from "@/lib/actions/companions.action";
 import {
+  playChime,
+  readSoundPreference,
+  writeSoundPreference,
+} from "@/lib/chime";
+import {
   cn,
   configureAssistant,
   formatClock,
   getSubjectsColor,
 } from "@/lib/utils";
+import { isMockMode } from "@/lib/mock-mode";
 import { getVapi } from "@/lib/vapi.sdk";
 import type { CompanionComponentProps, SavedMessage } from "@/types/companion";
 
@@ -33,6 +39,18 @@ type TranscriptMessage = {
   transcriptType?: string;
   role?: SavedMessage["role"];
   transcript?: string;
+};
+
+// Long sentences keep growing while being spoken; show only the newest words.
+const CAPTION_MAX_CHARS = 120;
+const tailForCaption = (text: string) => {
+  if (text.length <= CAPTION_MAX_CHARS) {
+    return text;
+  }
+
+  const tail = text.slice(-CAPTION_MAX_CHARS);
+  const firstSpace = tail.indexOf(" ");
+  return `…${firstSpace > -1 ? tail.slice(firstSpace + 1) : tail}`;
 };
 
 const blurDataUrl =
@@ -60,6 +78,28 @@ const CompanionComponent = ({
   const callStatusRef = useRef<CallStatus>(CallStatus.INACTIVE);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const orbRef = useRef<HTMLDivElement>(null);
+  const [caption, setCaption] = useState<{ role: string; text: string } | null>(
+    null
+  );
+  const [soundOn, setSoundOn] = useState(true);
+  const soundOnRef = useRef(true);
+  const captionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const enabled = readSoundPreference();
+    soundOnRef.current = enabled;
+    setSoundOn(enabled);
+  }, []);
+
+  const toggleSound = () => {
+    const next = !soundOnRef.current;
+    soundOnRef.current = next;
+    setSoundOn(next);
+    writeSoundPreference(next);
+  };
+
+  const resetOrbLevel = () =>
+    orbRef.current?.style.setProperty("--level", "0");
   const lottieRef = useRef<LottieRefCurrentProps>(null);
   const vapiRef = useRef<Vapi | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -121,19 +161,45 @@ const CompanionComponent = ({
         startedAtRef.current = Date.now();
         setElapsedSeconds(0);
         setStatus(CallStatus.ACTIVE);
+        if (soundOnRef.current) {
+          playChime("start");
+        }
       };
 
       const onCallEnd = () => {
         syncElapsed();
         setIsSpeaking(false);
+        setCaption(null);
+        resetOrbLevel();
         setStatus(CallStatus.FINISHED);
-        void addToSessionHistory(companionId).catch((error) => {
-          console.error("Failed to save session history:", error);
-          setHistoryError(true);
-        });
+        if (soundOnRef.current) {
+          playChime("end");
+        }
+        // The local mock has no signed-in user, so there is nothing to save.
+        if (!isMockMode) {
+          void addToSessionHistory(companionId).catch((error) => {
+            console.error("Failed to save session history:", error);
+            setHistoryError(true);
+          });
+        }
       };
 
       const onMessage = (message: TranscriptMessage) => {
+        if (
+          message.type === "transcript" &&
+          message.transcriptType === "partial" &&
+          message.role &&
+          message.transcript
+        ) {
+          if (captionTimerRef.current) {
+            clearTimeout(captionTimerRef.current);
+          }
+          setCaption({
+            role: message.role,
+            text: tailForCaption(message.transcript),
+          });
+        }
+
         if (
           message.type === "transcript" &&
           message.transcriptType === "final" &&
@@ -146,6 +212,16 @@ const CompanionComponent = ({
           };
 
           setMessages((prev) => [...prev, nextMessage]);
+
+          // Let the finished sentence linger briefly, then fade the caption.
+          setCaption({
+            role: message.role,
+            text: tailForCaption(message.transcript),
+          });
+          if (captionTimerRef.current) {
+            clearTimeout(captionTimerRef.current);
+          }
+          captionTimerRef.current = setTimeout(() => setCaption(null), 2200);
         }
       };
 
@@ -158,7 +234,10 @@ const CompanionComponent = ({
       };
 
       const onSpeechStart = () => setIsSpeaking(true);
-      const onSpeechEnd = () => setIsSpeaking(false);
+      const onSpeechEnd = () => {
+        setIsSpeaking(false);
+        resetOrbLevel();
+      };
       const onError = (error: Error) => {
         console.error("Vapi error:", error);
         setSessionError(
@@ -190,6 +269,9 @@ const CompanionComponent = ({
 
     return () => {
       cancelled = true;
+      if (captionTimerRef.current) {
+        clearTimeout(captionTimerRef.current);
+      }
       cleanupRef.current?.();
       cleanupRef.current = null;
 
@@ -288,6 +370,8 @@ const CompanionComponent = ({
             ref={orbRef}
             color={getSubjectsColor(subject)}
             state={orbState}
+            subject={subject}
+            caption={caption}
           >
             <div
               className="companion-avatar"
@@ -330,6 +414,14 @@ const CompanionComponent = ({
             </div>
           </CompanionOrb>
           <p className="font-bold text-2xl">{name}</p>
+          <button
+            type="button"
+            onClick={toggleSound}
+            aria-pressed={soundOn}
+            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+          >
+            {soundOn ? "Sounds on" : "Sounds off"}
+          </button>
           <p
             className="flex items-center gap-2 text-sm text-muted-foreground"
             aria-hidden="true"
