@@ -5,6 +5,9 @@ import { getSubjectsColor } from "@/lib/utils";
 import SearchInput from "@/components/SearchInput";
 import SubjectFilter from "@/components/SubjectFilter";
 import type { PageSearchParams } from "@/types/companion";
+import Link from "next/link";
+
+export const metadata = { title: "Companion Library" };
 
 const Companionslibrary = async ({ searchParams }: PageSearchParams) => {
   const filters = await searchParams;
@@ -25,6 +28,21 @@ const Companionslibrary = async ({ searchParams }: PageSearchParams) => {
                     <SubjectFilter/>
                 </div>
             </section>
+            {companions.length === 0 ? (
+                <section className="flex flex-col items-center gap-4 py-16 text-center">
+                    <p className="text-lg text-muted-foreground">
+                        {subject || topic
+                            ? "No companions match your search."
+                            : "No companions yet. Be the first to build one."}
+                    </p>
+                    <Link
+                        href={subject || topic ? "/companions" : "/companions/new"}
+                        className="btn-primary"
+                    >
+                        {subject || topic ? "Clear filters" : "Build a companion"}
+                    </Link>
+                </section>
+            ) : null}
             <section className="companions-grid  ">
                 {companions.map((companion) => (
                     <CompanionCard

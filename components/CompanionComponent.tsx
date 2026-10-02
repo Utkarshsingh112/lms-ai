@@ -190,6 +190,15 @@ const CompanionComponent = ({
 
   return (
     <section className="flex-col h-[70vh]">
+      <p className="sr-only" role="status" aria-live="polite">
+        {callStatus === CallStatus.CONNECTING
+          ? "Connecting to your companion"
+          : callStatus === CallStatus.ACTIVE
+            ? "Session started"
+            : callStatus === CallStatus.FINISHED
+              ? "Session ended"
+              : ""}
+      </p>
       <section className="flex gap-8 max-sm:flex-col">
         <div className="companion-section">
           <div
@@ -253,11 +262,13 @@ const CompanionComponent = ({
             className="btn-mic"
             onClick={toggleMicrophone}
             disabled={callStatus !== CallStatus.ACTIVE}
+            aria-pressed={isMuted}
+            aria-label="Microphone"
             type="button"
           >
             <Image
               src={isMuted ? "/icons/mic-off.svg" : "/icons/mic-on.svg"}
-              alt="mic"
+              alt=""
               width={36}
               height={36}
               sizes="36px"
@@ -294,7 +305,11 @@ const CompanionComponent = ({
       </section>
 
       <section className="transcript">
-        <div className="transcript-message no-scrollbar">
+        <div
+          className="transcript-message no-scrollbar"
+          role="log"
+          aria-label="Session transcript"
+        >
           {messages.map((message, index) =>
             message.role === "assistant" ? (
               <p key={index} className="max-sm:text-sm">

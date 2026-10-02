@@ -15,6 +15,8 @@ import {
 import Image from "next/image";
 import CompanionsList from "@/components/CompanionsList";
 
+export const metadata = { title: "My Journey" };
+
 const Profile = async() => {
    const user=await currentUser()
    if(!user) redirect('/sign-in');
@@ -23,11 +25,11 @@ const Profile = async() => {
   // const bookmarkedCompanions = await getBookmarkedCompanions(user.id);
   return (
    <main className='min-lg:w-3/4'>
-    <section className='flex jsutify-between gap-4 max-sm:flex-col items-centre'>
+    <section className='flex justify-between gap-4 max-sm:flex-col items-center'>
         <div className="flex gap-4 items-center">
       <Image
         src={user.imageUrl!}
-        alt={user.firstName!}
+        alt={user.firstName ?? "Your profile photo"}
         width={110}
         height={110}
         className="rounded-full"
@@ -40,16 +42,16 @@ const Profile = async() => {
               {user.firstName} {user.lastName}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {user.emailAddresses[0].emailAddress}
+              {user.emailAddresses[0]?.emailAddress}
             </p>
           </div>
         </div>
         <div className="flex gap-4">
-          <div className="border border-black rouded-lg p-3 gap-2 flex flex-col h-fit">
+          <div className="border border-black rounded-lg p-3 gap-2 flex flex-col h-fit">
             <div className="flex gap-2 items-center">
               <Image
                 src="/icons/check.svg"
-                alt="checkmark"
+                alt=""
                 width={22}
                 height={22}
                 sizes="22px"
@@ -58,9 +60,9 @@ const Profile = async() => {
             </div>
             <div>Lessons completed</div>
           </div>
-          <div className="border border-black rouded-lg p-3 gap-2 flex flex-col h-fit">
+          <div className="border border-black rounded-lg p-3 gap-2 flex flex-col h-fit">
             <div className="flex gap-2 items-center">
-              <Image src="/icons/cap.svg" alt="cap" width={22} height={22} sizes="22px" />
+              <Image src="/icons/cap.svg" alt="" width={22} height={22} sizes="22px" />
               <p className="text-2xl font-bold">{companions.length}</p>
             </div>
             <div>Companions created</div>
@@ -75,7 +77,11 @@ const Profile = async() => {
       Recent Sessions
     </AccordionTrigger>
     <AccordionContent>
-      <CompanionsList title="Recent sessions" companions={sessionHistory} />
+      <CompanionsList
+        title="Recent sessions"
+        companions={sessionHistory}
+        emptyMessage="No sessions yet. Launch a companion and your completed lessons will show up here."
+      />
     </AccordionContent>
   </AccordionItem>
 
@@ -85,7 +91,12 @@ const Profile = async() => {
       My companions ({companions.length})
     </AccordionTrigger>
     <AccordionContent>
-      <CompanionsList title="My Companions" companions={companions} />
+      <CompanionsList
+        title="My Companions"
+        companions={companions}
+        emptyMessage="You haven't built a companion yet."
+        emptyAction={{ href: "/companions/new", label: "Build your first companion" }}
+      />
     </AccordionContent>
   </AccordionItem>
 </Accordion>

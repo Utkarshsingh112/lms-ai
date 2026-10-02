@@ -7,6 +7,8 @@ import { redirect } from "next/navigation";
 import CompanionForm from "@/components/CompanionForm";
 import { newCompanionPermissions } from "@/lib/actions/companions.action";
 
+export const metadata = { title: "Build a Companion" };
+
 const NewCompanions = async () => {
   const { userId } = await auth();
 

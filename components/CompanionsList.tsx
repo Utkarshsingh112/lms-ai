@@ -19,11 +19,15 @@ interface CompanionsListProps {
   title?: string;
   companions?: Companion[];
   className?: string;
+  emptyMessage?: string;
+  emptyAction?: { href: string; label: string };
 }
 const CompanionsList = ({
   title,
   companions,
   className,
+  emptyMessage = "Nothing here yet.",
+  emptyAction,
 }: CompanionsListProps) => {
   return (
     <article className={cn(`companion-list`, className)}>
@@ -37,6 +41,21 @@ const CompanionsList = ({
           </TableRow>
         </TableHeader>
         <TableBody>
+          {!companions?.length ? (
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={3} className="py-10 text-center">
+                <p className="text-base text-muted-foreground">{emptyMessage}</p>
+                {emptyAction ? (
+                  <Link
+                    href={emptyAction.href}
+                    className="btn-primary mt-4 inline-flex"
+                  >
+                    {emptyAction.label}
+                  </Link>
+                ) : null}
+              </TableCell>
+            </TableRow>
+          ) : null}
           {companions?.map(({ id, subject, name, duration,topic }, index) => (
             <TableRow key={`${id}-${index}`}>
               <TableCell>
@@ -45,7 +64,7 @@ const CompanionsList = ({
                     <div className="size-[62px] flex items-center justify-center rounded-lg max-md:hidden" style={{ backgroundColor: getSubjectsColor(subject) }}>
                       <Image
                         src={`/icons/${subject}.svg`}
-                        alt={subject}
+                        alt=""
                         width={35}
                         height={35}
                       />
@@ -78,7 +97,7 @@ const CompanionsList = ({
                     {duration}
                     <span className="max-md:hidden ml-1">mins</span>
                   </p>
-                  <Image src="/icons/clock.svg" alt="minutes" width={14} height={14} />
+                  <Image src="/icons/clock.svg" alt="" width={14} height={14} />
                 </div>
               </TableCell>
             </TableRow>

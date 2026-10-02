@@ -11,7 +11,7 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "LMS-AI",
+  title: { default: "LMS-AI", template: "%s | LMS-AI" },
   description: "Real-time AI Teaching Platform",
 };
 
