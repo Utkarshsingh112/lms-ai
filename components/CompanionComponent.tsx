@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { LottieRefCurrentProps } from "lottie-react";
 import type Vapi from "@vapi-ai/web";
 
+import CompanionOrb, { type OrbState } from "@/components/CompanionOrb";
 import soundwaves from "@/constants/soundwaves.json";
 import { addToSessionHistory } from "@/lib/actions/companions.action";
 import {
@@ -58,6 +59,7 @@ const CompanionComponent = ({
   const startedAtRef = useRef<number | null>(null);
   const callStatusRef = useRef<CallStatus>(CallStatus.INACTIVE);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const orbRef = useRef<HTMLDivElement>(null);
   const lottieRef = useRef<LottieRefCurrentProps>(null);
   const vapiRef = useRef<Vapi | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -147,6 +149,14 @@ const CompanionComponent = ({
         }
       };
 
+      // Drives the orb's pulse straight on the DOM node (no re-render per frame).
+      const onVolume = (level: number) => {
+        orbRef.current?.style.setProperty(
+          "--level",
+          Math.min(1, Math.max(0, level)).toFixed(3)
+        );
+      };
+
       const onSpeechStart = () => setIsSpeaking(true);
       const onSpeechEnd = () => setIsSpeaking(false);
       const onError = (error: Error) => {
@@ -162,6 +172,7 @@ const CompanionComponent = ({
       vapi.on("message", onMessage);
       vapi.on("error", onError);
       vapi.on("speech-start", onSpeechStart);
+      vapi.on("volume-level", onVolume);
       vapi.on("speech-end", onSpeechEnd);
 
       cleanupRef.current = () => {
@@ -170,6 +181,7 @@ const CompanionComponent = ({
         vapi.off("message", onMessage);
         vapi.off("error", onError);
         vapi.off("speech-start", onSpeechStart);
+        vapi.off("volume-level", onVolume);
         vapi.off("speech-end", onSpeechEnd);
       };
     };
@@ -208,6 +220,15 @@ const CompanionComponent = ({
     duration && duration > 0
       ? Math.max(0, duration * 60 - elapsedSeconds)
       : null;
+
+  const orbState: OrbState =
+    callStatus === CallStatus.CONNECTING
+      ? "connecting"
+      : callStatus === CallStatus.ACTIVE
+        ? isSpeaking
+          ? "speaking"
+          : "listening"
+        : "idle";
 
   const handleCall = async () => {
     const vapi = await getVapi();
@@ -263,46 +284,75 @@ const CompanionComponent = ({
       </p>
       <section className="flex gap-8 max-sm:flex-col">
         <div className="companion-section">
-          <div
-            className="companion-avatar"
-            style={{ backgroundColor: getSubjectsColor(subject) }}
+          <CompanionOrb
+            ref={orbRef}
+            color={getSubjectsColor(subject)}
+            state={orbState}
           >
             <div
-              className={cn(
-                "absolute transition-opacity duration-1000",
-                callStatus === CallStatus.FINISHED ||
-                  callStatus === CallStatus.INACTIVE
-                  ? "opacity-100"
-                  : "opacity-0",
-                callStatus === CallStatus.CONNECTING &&
-                  "opacity-100 animate-pulse"
-              )}
+              className="companion-avatar"
+              style={{ backgroundColor: getSubjectsColor(subject) }}
             >
-              <Image
-                src={`/icons/${subject}.svg`}
-                alt={subject}
-                width={150}
-                height={150}
-                className="max-sm:w-fit"
-                sizes="(max-width: 640px) 40vw, 150px"
-              />
-            </div>
+              <div
+                className={cn(
+                  "absolute transition-opacity duration-1000",
+                  callStatus === CallStatus.FINISHED ||
+                    callStatus === CallStatus.INACTIVE
+                    ? "opacity-100"
+                    : "opacity-0",
+                  callStatus === CallStatus.CONNECTING &&
+                    "opacity-100 animate-pulse"
+                )}
+              >
+                <Image
+                  src={`/icons/${subject}.svg`}
+                  alt={subject}
+                  width={150}
+                  height={150}
+                  className="max-sm:w-fit"
+                  sizes="(max-width: 640px) 40vw, 150px"
+                />
+              </div>
 
-            <div
-              className={cn(
-                "absolute transition-opacity duration-1000",
-                callStatus === CallStatus.ACTIVE ? "opacity-100" : "opacity-0"
-              )}
-            >
-              <Lottie
-                lottieRef={lottieRef}
-                animationData={soundwaves}
-                autoplay={false}
-                className="companion-lottie"
-              />
+              <div
+                className={cn(
+                  "absolute transition-opacity duration-1000",
+                  callStatus === CallStatus.ACTIVE ? "opacity-100" : "opacity-0"
+                )}
+              >
+                <Lottie
+                  lottieRef={lottieRef}
+                  animationData={soundwaves}
+                  autoplay={false}
+                  className="companion-lottie"
+                />
+              </div>
             </div>
-          </div>
+          </CompanionOrb>
           <p className="font-bold text-2xl">{name}</p>
+          <p
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+            aria-hidden="true"
+          >
+            <span
+              className={cn(
+                "size-2 rounded-full",
+                orbState === "speaking" && "bg-green-600 animate-pulse",
+                orbState === "listening" && "bg-orange-500 animate-pulse",
+                orbState === "connecting" && "bg-yellow-500 animate-pulse",
+                orbState === "idle" && "bg-gray-400"
+              )}
+            />
+            {orbState === "speaking"
+              ? "Speaking"
+              : orbState === "listening"
+                ? "Listening"
+                : orbState === "connecting"
+                  ? "Connecting…"
+                  : callStatus === CallStatus.FINISHED
+                    ? "Session ended"
+                    : "Ready when you are"}
+          </p>
           {callStatus === CallStatus.ACTIVE ? (
             <p
               className={cn(
@@ -420,6 +470,13 @@ const CompanionComponent = ({
       ) : null}
 
       <section className="transcript">
+        {messages.length === 0 && callStatus !== CallStatus.FINISHED ? (
+          <p className="absolute top-12 z-20 text-center text-lg text-muted-foreground max-sm:text-base">
+            {callStatus === CallStatus.ACTIVE
+              ? "Say hello — your tutor is listening."
+              : "Press Start Session and your conversation will appear here."}
+          </p>
+        ) : null}
         <div
           ref={transcriptRef}
           className="transcript-message no-scrollbar"

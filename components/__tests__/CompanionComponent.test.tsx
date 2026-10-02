@@ -139,4 +139,24 @@ describe("CompanionComponent", () => {
 
     expect(fakeVapi.stop).toHaveBeenCalled();
   });
+
+  it("reflects the call state on the 3D orb and drives its volume", async () => {
+    const { container } = renderSession();
+    await screen.findByRole("button", { name: "Start Session" });
+
+    const stage = container.querySelector(".orb-stage") as HTMLElement;
+    expect(stage).toHaveAttribute("data-state", "idle");
+
+    emit("call-start");
+    expect(stage).toHaveAttribute("data-state", "listening");
+
+    emit("speech-start");
+    expect(stage).toHaveAttribute("data-state", "speaking");
+
+    emit("volume-level", 0.5);
+    expect(stage.style.getPropertyValue("--level")).toBe("0.500");
+
+    emit("speech-end");
+    expect(stage).toHaveAttribute("data-state", "listening");
+  });
 });
