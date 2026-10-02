@@ -1,10 +1,10 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
 import { getDatabaseErrorMessage } from "@/lib/errors";
-import { createSupabaseClient } from "@/lib/supabase";
+import { createAnonSupabaseClient, createSupabaseClient } from "@/lib/supabase";
 import { quoteFilterValue, toIlikePattern } from "@/lib/utils";
 import { companionFormSchema } from "@/lib/validations/companion";
 import type {
@@ -141,6 +141,7 @@ export const createCompanion = async (formData: CreateCompanionInput) => {
     throw new Error(LIMIT_REACHED_MESSAGE);
   }
 
+  revalidateTag(COMPANIONS_TAG);
   revalidatePath("/");
   revalidatePath("/companions");
   revalidatePath("/my-journey");
@@ -148,31 +149,90 @@ export const createCompanion = async (formData: CreateCompanionInput) => {
   return data as Companion;
 };
 
-const fetchCompanions = async (
-  { subject, topic }: Pick<GetAllCompanionsInput, "subject" | "topic">,
+const COMPANIONS_TAG = "companions";
+
+// Stable ordering keeps pages consistent between requests.
+const queryCompanions = (
+  supabase: SupabaseClient,
+  subject: string | undefined,
+  topic: string | undefined,
   from: number,
   to: number
 ) => {
-  const supabase = createSupabaseClient();
-  const normalizedSubject = normalizeFilterValue(subject);
-  const normalizedTopic = normalizeFilterValue(topic);
-
-  // Stable ordering keeps pages consistent between requests.
   let query = supabase
     .from("companions")
     .select()
     .order("id", { ascending: true });
 
-  if (normalizedSubject) {
-    query = query.ilike("subject", toIlikePattern(normalizedSubject));
+  if (subject) {
+    query = query.ilike("subject", toIlikePattern(subject));
   }
 
-  if (normalizedTopic) {
-    const pattern = quoteFilterValue(toIlikePattern(normalizedTopic));
+  if (topic) {
+    const pattern = quoteFilterValue(toIlikePattern(topic));
     query = query.or(`topic.ilike.${pattern},name.ilike.${pattern}`);
   }
 
-  const { data, error } = await query.range(from, to);
+  return query.range(from, to);
+};
+
+// Public lists (no free-text search) are shared by every visitor, so serve
+// them from the data cache for a minute instead of hitting the database on
+// every page view. `createCompanion` busts the tag, so new companions show up
+// immediately. Errors are thrown so they are never cached.
+const getCachedPublicCompanions = unstable_cache(
+  async (subject: string, from: number, to: number) => {
+    const { data, error } = await queryCompanions(
+      createAnonSupabaseClient(),
+      subject || undefined,
+      undefined,
+      from,
+      to
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []) as Companion[];
+  },
+  ["public-companions"],
+  { revalidate: 60, tags: [COMPANIONS_TAG] }
+);
+
+const fetchCompanions = async (
+  { subject, topic }: Pick<GetAllCompanionsInput, "subject" | "topic">,
+  from: number,
+  to: number
+) => {
+  const normalizedSubject = normalizeFilterValue(subject);
+  const normalizedTopic = normalizeFilterValue(topic);
+
+  if (!normalizedTopic) {
+    try {
+      const cached = await getCachedPublicCompanions(
+        normalizedSubject ?? "",
+        from,
+        to
+      );
+
+      // An empty anonymous result may just mean row-level security hides the
+      // rows from signed-out reads, so double-check with the user's session.
+      if (cached.length > 0) {
+        return cached;
+      }
+    } catch (error) {
+      logActionError("getAllCompanions.cache", error, { from, to });
+    }
+  }
+
+  const { data, error } = await queryCompanions(
+    createSupabaseClient(),
+    normalizedSubject,
+    normalizedTopic,
+    from,
+    to
+  );
 
   if (error) {
     logActionError("getAllCompanions", error, {
