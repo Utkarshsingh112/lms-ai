@@ -4,28 +4,14 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+// Kept deliberately light: every byte here ships to every visitor. Session
+// Replay (~40 kB gzipped) was removed, and traces are sampled instead of
+// recorded for every page view. Errors are still captured in full.
 Sentry.init({
   dsn: "https://15d649628f18a22fa8a77fcf3e17a681@o4510080139067392.ingest.us.sentry.io/4510080145358863",
 
-  // Add optional integrations for additional features
-  integrations: [
-    Sentry.replayIntegration(),
-  ],
+  tracesSampleRate: 0.1,
 
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
-
-  // Define how likely Replay events are sampled.
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
-
-  // Define how likely Replay events are sampled when an error occurs.
-  replaysOnErrorSampleRate: 1.0,
-
-  // Setting this option to true will print useful information to the console while you're setting up Sentry.
   debug: false,
 });
 

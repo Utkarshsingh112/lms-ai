@@ -9,6 +9,8 @@ import {
 const authMock = jest.fn();
 const createSupabaseClientMock = jest.fn();
 const revalidatePathMock = jest.fn();
+const revalidateTagMock = jest.fn();
+const createAnonSupabaseClientMock = jest.fn();
 
 jest.mock("@clerk/nextjs/server", () => ({
   auth: () => authMock(),
@@ -16,10 +18,14 @@ jest.mock("@clerk/nextjs/server", () => ({
 
 jest.mock("@/lib/supabase", () => ({
   createSupabaseClient: () => createSupabaseClientMock(),
+  createAnonSupabaseClient: () => createAnonSupabaseClientMock(),
 }));
 
 jest.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
+  revalidateTag: (...args: unknown[]) => revalidateTagMock(...args),
+  // Run the wrapped function directly; caching itself is Next's concern.
+  unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
 }));
 
 const proHas = ({ plan }: { plan?: string }) => plan === "pro";
@@ -35,6 +41,12 @@ const validInput = {
 describe("companions.action", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // By default the anonymous (cacheable) read is unavailable, so listing
+    // falls back to the signed-in client like before.
+    createAnonSupabaseClientMock.mockImplementation(() => {
+      throw new Error("anon unavailable");
+    });
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
   it("creates a companion and revalidates dependent pages", async () => {
@@ -70,6 +82,7 @@ describe("companions.action", () => {
       topic: "cells",
       voice: "female",
     });
+    expect(revalidateTagMock).toHaveBeenCalledWith("companions");
     expect(revalidatePathMock).toHaveBeenCalledWith("/");
     expect(revalidatePathMock).toHaveBeenCalledWith("/companions");
     expect(revalidatePathMock).toHaveBeenCalledWith("/my-journey");
@@ -256,5 +269,76 @@ describe("companions.action", () => {
     expect(rangeMock).toHaveBeenCalledWith(3, 6);
     expect(result.companions).toHaveLength(3);
     expect(result.hasMore).toBe(true);
+  });
+
+  describe("public list caching", () => {
+    const anonRows = (rows: unknown[], error: unknown = null) => {
+      const rangeMock = jest.fn().mockResolvedValue({ data: rows, error });
+      createAnonSupabaseClientMock.mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            order: jest.fn(() => ({
+              ilike: jest.fn(() => ({ range: rangeMock })),
+              range: rangeMock,
+            })),
+          })),
+        })),
+      });
+      return rangeMock;
+    };
+
+    it("serves unfiltered lists from the anonymous cached read", async () => {
+      anonRows([{ id: "a" }, { id: "b" }]);
+
+      const result = await getAllCompanions({ limit: 3 });
+
+      expect(result).toEqual([{ id: "a" }, { id: "b" }]);
+      expect(createSupabaseClientMock).not.toHaveBeenCalled();
+    });
+
+    it("double-checks empty anonymous results with the signed-in client", async () => {
+      anonRows([]);
+      const rangeMock = jest
+        .fn()
+        .mockResolvedValue({ data: [{ id: "private" }], error: null });
+      createSupabaseClientMock.mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            order: jest.fn(() => ({ range: rangeMock })),
+          })),
+        })),
+      });
+
+      await expect(getAllCompanions({})).resolves.toEqual([{ id: "private" }]);
+    });
+
+    it("falls back to the signed-in client when the cached read fails", async () => {
+      anonRows([], { message: "permission denied" });
+      const rangeMock = jest.fn().mockResolvedValue({ data: [{ id: "x" }], error: null });
+      createSupabaseClientMock.mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            order: jest.fn(() => ({ range: rangeMock })),
+          })),
+        })),
+      });
+
+      await expect(getAllCompanions({})).resolves.toEqual([{ id: "x" }]);
+    });
+
+    it("never caches free-text searches", async () => {
+      const rangeMock = jest.fn().mockResolvedValue({ data: [], error: null });
+      const orMock = jest.fn(() => ({ range: rangeMock }));
+      createSupabaseClientMock.mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({ order: jest.fn(() => ({ or: orMock })) })),
+        })),
+      });
+
+      await getAllCompanions({ topic: "cells" });
+
+      expect(createAnonSupabaseClientMock).not.toHaveBeenCalled();
+      expect(orMock).toHaveBeenCalled();
+    });
   });
 });

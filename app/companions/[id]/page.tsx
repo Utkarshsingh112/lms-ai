@@ -5,7 +5,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 
 import CompanionSessionClient from "@/components/CompanionSessionClient";
-import { getCompanion } from "@/lib/actions/companions.action";
+import { getCompanionOnce } from "@/lib/data/companion";
 import { getSubjectsColor } from "@/lib/utils";
 
 interface CompanionSessionPageProps {
@@ -18,7 +18,7 @@ export const generateMetadata = async ({
   const { id } = await params;
 
   try {
-    const companion = await getCompanion(id);
+    const companion = await getCompanionOnce(id);
     return { title: companion ? `${companion.name} – ${companion.topic}` : "Session" };
   } catch {
     return { title: "Session" };
@@ -27,8 +27,10 @@ export const generateMetadata = async ({
 
 const CompanionSession = async ({ params }: CompanionSessionPageProps) => {
   const { id } = await params;
-  const companion = await getCompanion(id);
-  const user = await currentUser();
+  const [companion, user] = await Promise.all([
+    getCompanionOnce(id),
+    currentUser(),
+  ]);
 
   if (!user) {
     redirect("/sign-in");

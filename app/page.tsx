@@ -12,8 +12,11 @@ import { getSubjectsColor } from "@/lib/utils";
 export const dynamic = 'force-dynamic';
 
 const Page = async () => {
-  const companions = await getAllCompanions({ limit: 3 });
-  const recentSessionsCompanions = await getRecentSessions(10);
+  // Independent reads: run them together instead of one after the other.
+  const [companions, recentSessionsCompanions] = await Promise.all([
+    getAllCompanions({ limit: 3 }),
+    getRecentSessions(10),
+  ]);
 
   return (
     <main>
