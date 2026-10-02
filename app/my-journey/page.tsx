@@ -5,7 +5,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import {
   getUserCompanions,
@@ -18,10 +18,16 @@ import CompanionsList from "@/components/CompanionsList";
 export const metadata = { title: "My Journey" };
 
 const Profile = async() => {
-   const user=await currentUser()
+   // `auth()` reads the session locally, so the user id is available right
+   // away and the three reads below can run together.
+   const { userId } = await auth()
+   if(!userId) redirect('/sign-in');
+   const [user, companions, sessionHistory] = await Promise.all([
+     currentUser(),
+     getUserCompanions(userId),
+     getUserSessions(userId),
+   ]);
    if(!user) redirect('/sign-in');
-    const companions = await getUserCompanions(user.id);
-  const sessionHistory = await getUserSessions(user.id);
   // const bookmarkedCompanions = await getBookmarkedCompanions(user.id);
   return (
    <main className='min-lg:w-3/4'>
