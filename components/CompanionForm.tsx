@@ -12,6 +12,7 @@ import {
   type CompanionFormValues,
 } from "@/lib/validations/companion";
 import { subjects } from "@/constants";
+import { getSubjectsColor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -48,6 +49,9 @@ const CompanionForm = () => {
     },
   });
 
+  const [previewName, previewSubject, previewTopic, previewDuration] =
+    form.watch(["name", "subject", "topic", "duration"]);
+
   const onSubmit = (values: CompanionFormValues) => {
     setSubmissionError(null);
 
@@ -72,6 +76,28 @@ const CompanionForm = () => {
             {submissionError}
           </div>
         ) : null}
+
+        <article
+          aria-label="Companion preview"
+          className="companion-card max-w-none min-h-0"
+          style={{
+            backgroundColor:
+              getSubjectsColor(previewSubject) ?? "#f3f4f6",
+          }}
+        >
+          <div className="subject-badge w-fit">
+            {previewSubject || "subject"}
+          </div>
+          <h2 className="text-2xl font-bold">
+            {previewName?.trim() || "Your companion"}
+          </h2>
+          <p className="text-sm">
+            {previewTopic?.trim() || "What it will help you learn"}
+          </p>
+          <p className="text-sm">
+            {Number(previewDuration) > 0 ? previewDuration : "–"} minutes
+          </p>
+        </article>
 
         <FormField
           control={form.control}

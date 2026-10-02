@@ -12,13 +12,13 @@ const Navbar = () => {
         <div className="flex items-center gap-2.5 cursor-pointer">
           <Image 
             src="/images/logo.svg" 
-            alt="logo" 
+            alt="LMS-AI home" 
             width={46} 
             height={46} 
           />
         </div>
       </Link>
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-8 max-sm:gap-3">
        <Navitems/>
         <SignedOut>
                     <SignInButton>

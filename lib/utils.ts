@@ -10,6 +10,15 @@ export function getSubjectsColor(subject: string) {
   return subjectsColors[subject as keyof typeof subjectsColors];
 }
 
+// Formats a number of seconds as m:ss (e.g. 125 -> "2:05").
+export const formatClock = (totalSeconds: number) => {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+};
+
 // Escapes LIKE wildcards so user input is matched literally.
 const escapeLikeValue = (value: string) => value.replace(/[\\%_]/g, "\\$&");
 

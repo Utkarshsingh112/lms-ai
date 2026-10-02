@@ -1,6 +1,7 @@
 import {
   createCompanion,
   getAllCompanions,
+  getCompanionsPage,
   getCompanion,
   getRecentSessions,
 } from "@/lib/actions/companions.action";
@@ -199,9 +200,12 @@ describe("companions.action", () => {
     const rangeMock = jest.fn().mockResolvedValue({ data: [], error: null });
     const orMock = jest.fn(() => ({ range: rangeMock }));
     const query = { or: orMock, range: rangeMock };
+    const orderMock = jest.fn(() => query);
 
     createSupabaseClientMock.mockReturnValue({
-      from: jest.fn(() => ({ select: jest.fn(() => query) })),
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({ order: orderMock })),
+      })),
     });
 
     await getAllCompanions({ topic: 'a,b)%"' });
@@ -233,5 +237,24 @@ describe("companions.action", () => {
 
     await expect(getRecentSessions(5)).resolves.toEqual([{ id: "c1" }]);
     expect(eqMock).toHaveBeenCalledWith("user_id", "user_123");
+  });
+
+  it("reports whether another page of companions exists", async () => {
+    const rows = Array.from({ length: 4 }, (_, index) => ({ id: `c${index}` }));
+    const rangeMock = jest.fn().mockResolvedValue({ data: rows, error: null });
+
+    createSupabaseClientMock.mockReturnValue({
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          order: jest.fn(() => ({ range: rangeMock })),
+        })),
+      })),
+    });
+
+    const result = await getCompanionsPage({ limit: 3, page: 2 });
+
+    expect(rangeMock).toHaveBeenCalledWith(3, 6);
+    expect(result.companions).toHaveLength(3);
+    expect(result.hasMore).toBe(true);
   });
 });

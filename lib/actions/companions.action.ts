@@ -148,17 +148,20 @@ export const createCompanion = async (formData: CreateCompanionInput) => {
   return data as Companion;
 };
 
-export const getAllCompanions = async ({
-  limit = 10,
-  page = 1,
-  subject,
-  topic,
-}: GetAllCompanionsInput) => {
+const fetchCompanions = async (
+  { subject, topic }: Pick<GetAllCompanionsInput, "subject" | "topic">,
+  from: number,
+  to: number
+) => {
   const supabase = createSupabaseClient();
   const normalizedSubject = normalizeFilterValue(subject);
   const normalizedTopic = normalizeFilterValue(topic);
 
-  let query = supabase.from("companions").select();
+  // Stable ordering keeps pages consistent between requests.
+  let query = supabase
+    .from("companions")
+    .select()
+    .order("id", { ascending: true });
 
   if (normalizedSubject) {
     query = query.ilike("subject", toIlikePattern(normalizedSubject));
@@ -169,12 +172,12 @@ export const getAllCompanions = async ({
     query = query.or(`topic.ilike.${pattern},name.ilike.${pattern}`);
   }
 
-  const { data, error } = await query.range((page - 1) * limit, page * limit - 1);
+  const { data, error } = await query.range(from, to);
 
   if (error) {
     logActionError("getAllCompanions", error, {
-      limit,
-      page,
+      from,
+      to,
       normalizedSubject,
       normalizedTopic,
     });
@@ -184,6 +187,27 @@ export const getAllCompanions = async ({
   }
 
   return (data ?? []) as Companion[];
+};
+
+export const getAllCompanions = async ({
+  limit = 10,
+  page = 1,
+  subject,
+  topic,
+}: GetAllCompanionsInput) =>
+  fetchCompanions({ subject, topic }, (page - 1) * limit, page * limit - 1);
+
+// Fetches one extra row so callers know whether a next page exists.
+export const getCompanionsPage = async ({
+  limit = 9,
+  page = 1,
+  subject,
+  topic,
+}: GetAllCompanionsInput) => {
+  const from = (page - 1) * limit;
+  const rows = await fetchCompanions({ subject, topic }, from, from + limit);
+
+  return { companions: rows.slice(0, limit), hasMore: rows.length > limit };
 };
 
 export const getCompanion = async (id: string) => {

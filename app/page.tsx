@@ -33,6 +33,7 @@ const Page = async () => {
         <CompanionsList
           title="Recently completed sessions"
           companions={recentSessionsCompanions}
+          emptyMessage="Sign in and finish a session to see your recent lessons here."
           className="w-2/3 max-lg:w-full"
         />
         <CTA />

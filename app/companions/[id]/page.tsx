@@ -1,4 +1,5 @@
 import React from "react";
+import type { Metadata } from "next";
 import Image from "next/image";
 import { currentUser } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
@@ -10,6 +11,19 @@ import { getSubjectsColor } from "@/lib/utils";
 interface CompanionSessionPageProps {
   params: Promise<{ id: string }>;
 }
+
+export const generateMetadata = async ({
+  params,
+}: CompanionSessionPageProps): Promise<Metadata> => {
+  const { id } = await params;
+
+  try {
+    const companion = await getCompanion(id);
+    return { title: companion ? `${companion.name} – ${companion.topic}` : "Session" };
+  } catch {
+    return { title: "Session" };
+  }
+};
 
 const CompanionSession = async ({ params }: CompanionSessionPageProps) => {
   const { id } = await params;

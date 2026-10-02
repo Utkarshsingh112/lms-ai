@@ -19,8 +19,9 @@ const Navitems = () => {
        <Link 
          href={href} 
          key={label}
+         aria-current={pathname === href ? "page" : undefined}
          className={cn(
-           "hover:underline",
+           "hover:underline whitespace-nowrap max-sm:text-sm",
            pathname === href && " text-primary font-semibold"
          )}
        >
