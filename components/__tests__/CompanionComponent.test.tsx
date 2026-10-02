@@ -27,6 +27,11 @@ jest.mock("@/lib/actions/companions.action", () => ({
   addToSessionHistory: (...args: unknown[]) => addToSessionHistoryMock(...args),
 }));
 
+jest.mock("@/components/SessionRecap", () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 jest.mock("@/lib/chime", () => ({
   playChime: (...args: unknown[]) => playChimeMock(...args),
   readSoundPreference: () => window.localStorage.getItem("lms-ai:sounds") !== "off",

@@ -8,6 +8,7 @@ import type { LottieRefCurrentProps } from "lottie-react";
 import type Vapi from "@vapi-ai/web";
 
 import CompanionOrb, { type OrbState } from "@/components/CompanionOrb";
+import SessionRecap from "@/components/SessionRecap";
 import soundwaves from "@/constants/soundwaves.json";
 import { addToSessionHistory } from "@/lib/actions/companions.action";
 import {
@@ -565,6 +566,7 @@ const CompanionComponent = ({
               We couldn&apos;t save this session to your history.
             </p>
           ) : null}
+          <SessionRecap companionId={companionId} messages={messages} />
           <div className="flex gap-4">
             <Link href="/companions" className="btn-signin">
               Browse companions

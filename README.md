@@ -77,12 +77,29 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 # Vapi AI
 NEXT_PUBLIC_WEB_TOKEN=your_vapi_web_token
 
+# AI session recap + quiz (optional; recaps are hidden when unset)
+ANTHROPIC_API_KEY=your_anthropic_api_key
+
 # Cron auth for /api/keep-alive (required; Vercel Cron sends it automatically)
 CRON_SECRET=a_long_random_string
 
 # Sentry (Optional)
 SENTRY_AUTH_TOKEN=your_sentry_auth_token
 ```
+
+## 🧠 Session recap and quiz
+
+When a voice session ends, the app writes a short recap and a 3-question quiz
+from the transcript (Claude, server-side) and saves it to `session_summaries`.
+
+1. Apply `supabase/migrations/20261002000000_session_summaries.sql` to your
+   Supabase project (SQL editor or `supabase db push`).
+2. Set `ANTHROPIC_API_KEY` (server-only, never `NEXT_PUBLIC_`).
+
+Safeguards: signed-in users only, transcripts are capped, 20 recaps per user per
+day (counted from the table, so recaps stay off until the migration exists), and
+the transcript is treated as data, not instructions. Without the key or the
+table the session summary simply omits the recap.
 
 ## 🧪 Local UI testing with mock credentials
 
@@ -95,7 +112,7 @@ npm run dev:mock
 
 - Library and home pages run against an in-memory Supabase mock.
 - `http://localhost:3000/dev/session` shows the full session screen (3D orb,
-  live captions, waveform, subject backdrops, summary) driven by a scripted
+  live captions, summary and a sample recap/quiz) driven by a scripted
   voice call. Add `?subject=maths` (or coding, history, ...) to switch subjects.
 - Sign-in, My Journey and creating companions need real Clerk keys.
 - The mock only runs outside production (`NEXT_PUBLIC_MOCK_VAPI` is ignored in
