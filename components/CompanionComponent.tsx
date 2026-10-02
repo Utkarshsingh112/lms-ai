@@ -370,8 +370,6 @@ const CompanionComponent = ({
             ref={orbRef}
             color={getSubjectsColor(subject)}
             state={orbState}
-            subject={subject}
-            caption={caption}
           >
             <div
               className="companion-avatar"
@@ -413,6 +411,23 @@ const CompanionComponent = ({
               </div>
             </div>
           </CompanionOrb>
+          <div
+            className="flex min-h-12 w-full items-center justify-center px-4"
+            aria-hidden="true"
+          >
+            <p
+              className={cn(
+                "max-w-xl rounded-4xl px-5 py-2 text-center text-sm transition-opacity duration-300 max-sm:text-xs",
+                caption ? "opacity-100" : "opacity-0",
+                caption?.role === "user"
+                  ? "border border-black bg-white italic text-black"
+                  : "bg-black text-white"
+              )}
+              data-testid="session-caption"
+            >
+              {caption?.text ?? "\u00a0"}
+            </p>
+          </div>
           <p className="font-bold text-2xl">{name}</p>
           <button
             type="button"

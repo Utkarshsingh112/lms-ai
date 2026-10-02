@@ -170,7 +170,7 @@ describe("CompanionComponent", () => {
   });
 
   it("shows live captions for partial transcripts, then fades them", async () => {
-    const { container } = renderSession();
+    renderSession();
     await screen.findByRole("button", { name: "Start Session" });
     emit("call-start");
 
@@ -181,8 +181,8 @@ describe("CompanionComponent", () => {
       transcript: "Photosynthesis turns light",
     });
 
-    const caption = container.querySelector(".orb-caption") as HTMLElement;
-    expect(caption).toHaveClass("orb-caption-visible");
+    const caption = screen.getByTestId("session-caption");
+    expect(caption).toHaveClass("opacity-100");
     expect(caption).toHaveTextContent("Photosynthesis turns light");
 
     emit("message", {
@@ -194,11 +194,11 @@ describe("CompanionComponent", () => {
     act(() => {
       jest.advanceTimersByTime(2500);
     });
-    expect(caption).not.toHaveClass("orb-caption-visible");
+    expect(caption).toHaveClass("opacity-0");
   });
 
   it("keeps only the newest words for very long captions", async () => {
-    const { container } = renderSession();
+    renderSession();
     await screen.findByRole("button", { name: "Start Session" });
     emit("call-start");
 
@@ -210,7 +210,7 @@ describe("CompanionComponent", () => {
       transcript: long,
     });
 
-    const caption = container.querySelector(".orb-caption") as HTMLElement;
+    const caption = screen.getByTestId("session-caption");
     expect(caption.textContent?.startsWith("…")).toBe(true);
     expect(caption.textContent).toContain("word59");
     expect(caption.textContent).not.toContain("word0 ");
