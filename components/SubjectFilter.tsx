@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
     Select,
     SelectContent,
@@ -8,37 +8,34 @@ import {
     SelectValue,
 } from "./ui/select";
 import { subjects } from "@/constants";
-import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
-import { formUrlQuery, removeKeysFromUrlQuery } from "@jsmastery/utils";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const SubjectFilter = () => {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
-    const query = searchParams.get("subject") || "";
+    const subject = searchParams.get("subject") || "";
 
-    const [subject, setSubject] = useState(query);
+    const handleChange = (value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
 
-    useEffect(() => {
-        let newUrl = "";
-        if (!subject || subject === "all") {
-            newUrl = removeKeysFromUrlQuery({
-                params: searchParams.toString(),
-                keysToRemove: ["subject"],
-            });
+        if (!value || value === "all") {
+            params.delete("subject");
         } else {
-            newUrl = formUrlQuery({
-                params: searchParams.toString(),
-                key: "subject",
-                value: subject,
-            });
+            params.set("subject", value);
         }
-        router.push(newUrl, { scroll: false });
-    }, [subject, router, searchParams]);
+        // A new filter always starts from the first page.
+        params.delete("page");
+
+        const queryString = params.toString();
+        router.push(queryString ? `${pathname}?${queryString}` : pathname, {
+            scroll: false,
+        });
+    };
 
     return (
-        <Select onValueChange={setSubject} value={subject}>
-            <SelectTrigger className="input capitalize">
+        <Select onValueChange={handleChange} value={subject}>
+            <SelectTrigger className="input capitalize" aria-label="Filter by subject">
                 <SelectValue placeholder="Subject" />
             </SelectTrigger>
             <SelectContent>

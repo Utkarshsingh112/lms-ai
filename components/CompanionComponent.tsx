@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import Link from "next/link";
 import type { LottieRefCurrentProps } from "lottie-react";
 import type Vapi from "@vapi-ai/web";
 
 import soundwaves from "@/constants/soundwaves.json";
 import { addToSessionHistory } from "@/lib/actions/companions.action";
-import { cn, configureAssistant, getSubjectsColor } from "@/lib/utils";
+import {
+  cn,
+  configureAssistant,
+  formatClock,
+  getSubjectsColor,
+} from "@/lib/utils";
 import { getVapi } from "@/lib/vapi.sdk";
 import type { CompanionComponentProps, SavedMessage } from "@/types/companion";
 
@@ -47,9 +53,45 @@ const CompanionComponent = ({
   const [isMuted, setIsMuted] = useState(false);
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const startedAtRef = useRef<number | null>(null);
+  const callStatusRef = useRef<CallStatus>(CallStatus.INACTIVE);
+  const transcriptRef = useRef<HTMLDivElement>(null);
   const lottieRef = useRef<LottieRefCurrentProps>(null);
   const vapiRef = useRef<Vapi | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+
+  const setStatus = useCallback((status: CallStatus) => {
+    callStatusRef.current = status;
+    setCallStatus(status);
+  }, []);
+
+  const syncElapsed = useCallback(() => {
+    if (startedAtRef.current !== null) {
+      setElapsedSeconds(
+        Math.floor((Date.now() - startedAtRef.current) / 1000)
+      );
+    }
+  }, []);
+
+  // Tick the session clock while the call is live.
+  useEffect(() => {
+    if (callStatus !== CallStatus.ACTIVE) {
+      return;
+    }
+
+    const interval = setInterval(syncElapsed, 1000);
+    return () => clearInterval(interval);
+  }, [callStatus, syncElapsed]);
+
+  // Keep the newest transcript line in view.
+  useEffect(() => {
+    const element = transcriptRef.current;
+    if (element) {
+      element.scrollTop = element.scrollHeight;
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (isSpeaking) {
@@ -74,13 +116,18 @@ const CompanionComponent = ({
 
       const onCallStart = () => {
         setSessionError(null);
-        setCallStatus(CallStatus.ACTIVE);
+        startedAtRef.current = Date.now();
+        setElapsedSeconds(0);
+        setStatus(CallStatus.ACTIVE);
       };
 
       const onCallEnd = () => {
-        setCallStatus(CallStatus.FINISHED);
+        syncElapsed();
+        setIsSpeaking(false);
+        setStatus(CallStatus.FINISHED);
         void addToSessionHistory(companionId).catch((error) => {
           console.error("Failed to save session history:", error);
+          setHistoryError(true);
         });
       };
 
@@ -96,10 +143,7 @@ const CompanionComponent = ({
             content: message.transcript,
           };
 
-          setMessages((prev) => [
-            nextMessage,
-            ...prev,
-          ]);
+          setMessages((prev) => [...prev, nextMessage]);
         }
       };
 
@@ -110,7 +154,7 @@ const CompanionComponent = ({
         setSessionError(
           "The voice session failed to start. Check your setup and try again."
         );
-        setCallStatus(CallStatus.INACTIVE);
+        setStatus(CallStatus.INACTIVE);
       };
 
       vapi.on("call-start", onCallStart);
@@ -136,8 +180,16 @@ const CompanionComponent = ({
       cancelled = true;
       cleanupRef.current?.();
       cleanupRef.current = null;
+
+      // Leaving the page must not leave the microphone call running.
+      if (
+        callStatusRef.current === CallStatus.ACTIVE ||
+        callStatusRef.current === CallStatus.CONNECTING
+      ) {
+        vapiRef.current?.stop();
+      }
     };
-  }, [companionId]);
+  }, [companionId, setStatus, syncElapsed]);
 
   const toggleMicrophone = () => {
     const vapi = vapiRef.current;
@@ -152,6 +204,11 @@ const CompanionComponent = ({
     setIsMuted(nextMutedState);
   };
 
+  const remainingSeconds =
+    duration && duration > 0
+      ? Math.max(0, duration * 60 - elapsedSeconds)
+      : null;
+
   const handleCall = async () => {
     const vapi = await getVapi();
     vapiRef.current = vapi;
@@ -164,7 +221,11 @@ const CompanionComponent = ({
     }
 
     setSessionError(null);
-    setCallStatus(CallStatus.CONNECTING);
+    setHistoryError(false);
+    setMessages([]);
+    setElapsedSeconds(0);
+    startedAtRef.current = null;
+    setStatus(CallStatus.CONNECTING);
 
     const assistantOverrides = {
       variableValues: { subject, topic, style },
@@ -184,7 +245,8 @@ const CompanionComponent = ({
       return;
     }
 
-    setCallStatus(CallStatus.FINISHED);
+    syncElapsed();
+    setStatus(CallStatus.FINISHED);
     vapi.stop();
   };
 
@@ -241,6 +303,25 @@ const CompanionComponent = ({
             </div>
           </div>
           <p className="font-bold text-2xl">{name}</p>
+          {callStatus === CallStatus.ACTIVE ? (
+            <p
+              className={cn(
+                "mb-4 text-lg font-medium tabular-nums",
+                remainingSeconds !== null && remainingSeconds <= 60
+                  ? "text-red-700"
+                  : "text-muted-foreground"
+              )}
+              aria-label={
+                remainingSeconds !== null
+                  ? `${formatClock(remainingSeconds)} remaining`
+                  : `${formatClock(elapsedSeconds)} elapsed`
+              }
+            >
+              {remainingSeconds !== null
+                ? `${formatClock(remainingSeconds)} left`
+                : formatClock(elapsedSeconds)}
+            </p>
+          ) : null}
         </div>
 
         <div className="user-section">
@@ -293,19 +374,54 @@ const CompanionComponent = ({
             onClick={
               callStatus === CallStatus.ACTIVE ? handleDisconnect : handleCall
             }
+            disabled={callStatus === CallStatus.CONNECTING}
             type="button"
           >
             {callStatus === CallStatus.ACTIVE
               ? "End Session"
               : callStatus === CallStatus.CONNECTING
                 ? "Connecting"
-                : "Start Session"}
+                : callStatus === CallStatus.FINISHED
+                  ? "Start Another Session"
+                  : "Start Session"}
           </button>
         </div>
       </section>
 
+      {callStatus === CallStatus.FINISHED ? (
+        <section
+          className="rounded-border mt-6 flex flex-col gap-3 p-6"
+          aria-label="Session summary"
+        >
+          <h2 className="text-2xl font-bold">Session complete</h2>
+          <p className="text-muted-foreground">
+            You spent {formatClock(elapsedSeconds)} on {topic} with{" "}
+            {name.split(" ")[0].replace(/[.,]/g, "")}
+            {messages.length > 0
+              ? ` across ${messages.length} ${
+                  messages.length === 1 ? "message" : "messages"
+                }.`
+              : "."}
+          </p>
+          {historyError ? (
+            <p className="text-sm text-red-600" role="alert">
+              We couldn&apos;t save this session to your history.
+            </p>
+          ) : null}
+          <div className="flex gap-4">
+            <Link href="/companions" className="btn-signin">
+              Browse companions
+            </Link>
+            <Link href="/my-journey" className="btn-signin">
+              My journey
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       <section className="transcript">
         <div
+          ref={transcriptRef}
           className="transcript-message no-scrollbar"
           role="log"
           aria-label="Session transcript"
